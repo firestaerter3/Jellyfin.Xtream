@@ -1,62 +1,14 @@
-# Jellyfin Xtream Plugin - Flat Series View Fork
+# Jellyfin.Xtream - Flat Series View Fork
 
-**Project Goal:** Fork and modify the Jellyfin Xtream plugin to add a "flat series view" feature that displays all series directly without category folders.
+> **Fork Status:** This is a fork of [Jellyfin.Xtream](https://github.com/Kevinjil/Jellyfin.Xtream) with an additional feature: **Flat Series View** - displays all series directly without category folders.
 
----
+## 🎯 Fork Feature: Flat Series View
 
-## 📁 Project Structure
+**Project Goal:** Add a "flat series view" feature that displays all series directly without category folders.
 
-```
-Jellyfin-Xtream-FlatView/
-├── README.md                                    # This file
-├── docs/
-│   └── JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md  # Detailed implementation plan
-└── scripts/
-    └── fork_xtream_plugin.sh                   # Setup script for forking
-```
+### Feature Overview
 
----
-
-## 🚀 Quick Start
-
-### 1. Fork the Repository
-
-1. Go to https://github.com/Kevinjil/Jellyfin.Xtream
-2. Click "Fork" to create your own copy
-
-### 2. Run Setup Script
-
-```bash
-cd "/path/to/repo/Documents/Coding Projects/Jellyfin-Xtream-FlatView"
-./scripts/fork_xtream_plugin.sh
-```
-
-This will:
-- Clone your forked repository
-- Create a feature branch
-- Analyze the codebase
-- Set up the development environment
-
-### 3. Review Implementation Plan
-
-Read the detailed plan:
-```bash
-cat docs/JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md
-```
-
-### 4. Start Development
-
-Follow the implementation plan to:
-- Add configuration property
-- Modify series creation logic
-- Update UI configuration
-- Test thoroughly
-
----
-
-## 📋 Feature Overview
-
-### Current Behavior
+**Current Behavior:**
 ```
 Xtream Series
   └── Category Folder
@@ -64,7 +16,7 @@ Xtream Series
       └── Series 2
 ```
 
-### Desired Behavior (Flat View)
+**Desired Behavior (Flat View):**
 ```
 Xtream Series
   └── Series 1
@@ -73,40 +25,103 @@ Xtream Series
   (all series directly, no category folders)
 ```
 
----
+### Development Status
 
-## 🛠️ Development Requirements
-
-- **.NET SDK:** 8.0+ (match Jellyfin server version)
-- **IDE:** Visual Studio 2022 or VS Code with C# extensions
-- **Jellyfin Server:** Local instance for testing
-- **Xtream Provider:** Test credentials for API access
-
----
-
-## 📚 Resources
-
-- **Original Repository:** https://github.com/Kevinjil/Jellyfin.Xtream
-- **Jellyfin Plugin Docs:** https://jellyfin.org/docs/general/development/plugins/
-- **Implementation Plan:** `docs/JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md`
-
----
-
-## 📝 Status
-
-- [x] Project structure created
-- [x] Implementation plan documented
-- [x] Setup script created
-- [ ] Repository forked
-- [ ] Feature branch created
+- [x] Repository forked and set up
+- [x] Feature branch created (`feature/flat-series-view`)
+- [x] Implementation plan documented (`docs/JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md`)
 - [ ] Code analysis completed
 - [ ] Configuration changes implemented
 - [ ] Core logic implemented
 - [ ] UI updates completed
 - [ ] Testing completed
-- [ ] Documentation updated
-- [ ] Release created
+
+See `docs/JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md` for detailed implementation plan.
 
 ---
 
-**Last Updated:** January 21, 2026
+# Jellyfin.Xtream
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Kevinjil/Jellyfin.Xtream/total)
+![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/Kevinjil/Jellyfin.Xtream/latest/total)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/Kevinjil/Jellyfin.Xtream/latest)
+![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2FKevinjil%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=targetAbi&label=Jellyfin%20ABI)
+![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2FKevinjil%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=framework&label=.NET%20framework)
+
+The Jellyfin.Xtream plugin can be used to integrate the content provided by an [Xtream-compatible API](https://xtream-ui.org/api-xtreamui-xtreamcode/) in your [Jellyfin](https://jellyfin.org/) instance.
+
+## Installation
+
+The plugin can be installed using a custom plugin repository.
+To add the repository, follow these steps:
+
+1. Open your admin dashboard and navigate to `Plugins`.
+1. Select the `Repositories` tab on the top of the page.
+1. Click the `+` symbol to add a repository.
+1. Enter `Jellyfin.Xtream` as the repository name.
+1. Enter [`https://kevinjil.github.io/Jellyfin.Xtream/repository.json`](https://kevinjil.github.io/Jellyfin.Xtream/repository.json) as the repository url.
+1. Click save.
+
+To install or update the plugin, follow these steps:
+
+1. Open your admin dashboard and navigate to `Plugins`.
+1. Select the `Catalog` tab on the top of the page.
+1. Under `Live TV`, select `Jellyfin Xtream`.
+1. (Optional) Select the desired plugin version.
+1. Click `Install`.
+1. Restart your Jellyfin server to complete the installation.
+
+## Configuration
+
+The plugin requires connection information for an [Xtream-compatible API](https://xtream-ui.org/api-xtreamui-xtreamcode/).
+The following credentials should be set correctly in the `Credentials` plugin configuration tab on the admin dashboard.
+
+| Property | Description                                                                               |
+| -------- | ----------------------------------------------------------------------------------------- |
+| Base URL | The URL of the API endpoint excluding the trailing slash, including protocol (http/https) |
+| Username | The username used to authenticate to the API                                              |
+| Password | The password used to authenticate to the API                                              |
+
+### Live TV
+
+1. Open the `Live TV` configuration tab.
+1. Select the categories, or individual channels within categories, you want to be available.
+1. Click `Save` on the bottom of the page.
+1. Open the `TV Overrides` configuration tab.
+1. Modify the channel numbers, names, and icons if desired.
+1. Click `Save` on the bottom of the page.
+
+### Video On-Demand
+
+1. Open the `Video On-Demand` configuration tab.
+1. Enable `Show this channel to users`.
+1. Select the categories, or individual videos within categories, you want to be available.
+1. Click `Save` on the bottom of the page.
+
+### Series
+
+1. Open the `Series` configuration tab.
+1. Enable `Show this channel to users`.
+1. Select the categories, or individual series within categories, you want to be available.
+1. Click `Save` on the bottom of the page.
+
+### TV Catchup
+1. Open the `Live TV` configuration tab.
+1. Enable `Show the catch-up channel to users`.
+1. Click `Save` on the bottom of the page.
+
+## Known problems
+
+### Loss of confidentiality
+
+Jellyfin publishes the remote paths in the API and in the default user interface.
+As the Xtream format for remote paths includes the username and password, anyone that can access the library will have access to your credentials.
+Use this plugin with caution on shared servers.
+
+## Troubleshooting
+
+Make sure you have correctly configured your [Jellyfin networking](https://jellyfin.org/docs/general/networking/):
+
+1. Open your admin dashboard and navigate to `Networking`.
+2. Correctly configure your `Published server URIs`.
+   For example: `all=https://jellyfin.example.com`
+>>>>>>> upstream/master
