@@ -38,6 +38,17 @@ Xtream Series
 
 See `docs/JELLYFIN_XTREAM_FLAT_VIEW_IMPLEMENTATION.md` for detailed implementation plan.
 
+## 📦 Plugin Repository Setup
+
+To install this plugin through Jellyfin's plugin system, you can set up a custom repository. See `docs/REPOSITORY_SETUP.md` for detailed instructions.
+
+**Quick Setup:**
+1. Push your fork to GitHub
+2. Enable GitHub Pages (Settings → Pages → gh-pages branch)
+3. Create a GitHub Release with the built DLL
+4. The repository will be available at: `https://YOUR_USERNAME.github.io/Jellyfin.Xtream/repository.json`
+5. Add this URL to Jellyfin: Plugins → Repositories → + New Repository
+
 ---
 
 # Jellyfin.Xtream
