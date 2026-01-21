@@ -1,0 +1,19 @@
+{
+  "Plugins": [
+    {
+      "Name": "Jellyfin Xtream (Flat View)",
+      "Id": "5d774c35-8567-46d3-a950-9bb8227a0c5d",
+      "Description": "Stream Live IPTV, Video On-Demand, and Series from an Xtream-compatible server. Includes flat series view feature to show all series directly without category folders.",
+      "Author": "rolandb5",
+      "Category": "LiveTV",
+      "Versions": [
+        {
+          "Version": "0.9.0.0",
+          "DownloadUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.0-flat-view/Jellyfin.Xtream.dll",
+          "TargetAbi": "10.11.0.0",
+          "Framework": "net9.0"
+        }
+      ]
+    }
+  ]
+}
