@@ -27,15 +27,25 @@ jobs:
           if [ -z "${{ github.event.release.upload_url }}" ]; then
             # Manual trigger - get the latest release
             RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases --jq '.[0].tag_name' | head -1)
+            echo "Found release tag: $RELEASE_TAG"
             UPLOAD_URL=$(gh api repos/${{ github.repository }}/releases/tags/$RELEASE_TAG --jq '.upload_url' | sed 's/{?name,label}//')
+            echo "Upload URL: $UPLOAD_URL"
             echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
-            echo "Using release: $RELEASE_TAG"
           else
             # Release event trigger
-            echo "upload_url=${{ github.event.release.upload_url }}" >> $GITHUB_OUTPUT
+            UPLOAD_URL="${{ github.event.release.upload_url }}"
+            echo "Using release event upload_url: $UPLOAD_URL"
+            echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Debug Upload URL
+        run: |
+          echo "Upload URL from step output: ${{ steps.get_release.outputs.upload_url }}"
+          if [ -z "${{ steps.get_release.outputs.upload_url }}" ]; then
+            echo "ERROR: upload_url is empty!"
+            exit 1
+          fi
       - name: Prepare GitHub Release assets
         run: |-
           for file in ./*; do
