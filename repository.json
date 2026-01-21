@@ -17,7 +17,7 @@
       },
       {
         "changelog": "## New Feature: Flat Series View\n\nThis release adds the ability to display all series directly without category folders.\n\n### Features\n- ✅ Flat series view option in configuration\n- ✅ Shows all series directly from selected categories\n- ✅ Maintains season/episode hierarchy\n- ✅ Backward compatible (opt-in feature)\n\n### How to Use\n1. Install the plugin from the repository\n2. Go to Plugins → Xtream → Series tab\n3. Enable \"Flatten Series View\" checkbox\n4. Save and refresh your library\n\n### Changes\n- Added FlattenSeriesView configuration property\n- Modified SeriesChannel to support flat view\n- Updated UI with checkbox control\n- Version bumped to 0.9.0.0",
-        "checksum": "a6a77fa1ab6e5f2e19815ce4f0f6a0f6",
+        "checksum": "20847c544567be107915dc39bc71a995",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.0-flat-view/jellyfin-xtream-flat-view_0.9.1.0.zip",
         "targetAbi": "10.11.0.0",
         "timestamp": "2026-01-21T22:40:07Z",
