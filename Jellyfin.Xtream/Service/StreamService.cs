@@ -293,8 +293,8 @@ public partial class StreamService(IXtreamClient xtreamClient)
 
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
 
-        // Safely get episodes for the season
-        if (series.Episodes != null && series.Episodes.TryGetValue(seasonId, out var episodes) && episodes != null)
+        // Safely get episodes for the season - check if episodes dictionary exists and has the season
+        if (series.Episodes != null && series.Episodes.TryGetValue(seasonId, out var episodes) && episodes != null && episodes.Any())
         {
             return episodes.Select((Episode episode) => new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
         }
