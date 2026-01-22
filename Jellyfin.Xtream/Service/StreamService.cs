@@ -113,50 +113,72 @@ public partial class StreamService(IXtreamClient xtreamClient)
             return new ParsedName { Title = string.Empty, Tags = [] };
         }
 
-        List<string> tags = [];
-
-        // Strip country/language prefixes like "| NL |", "| DE |", "| FR |", etc. from the start
-        // This pattern matches: | (optional space) 2-3 letters (optional space) | (optional space)
-        // Also handles variations like "|NL|", "| NL|", "|NL |", etc.
-        string cleanedName = Regex.Replace(
-            name,
-            @"^\|\s*[A-Z]{2,3}\s*\|",
-            string.Empty,
-            RegexOptions.IgnoreCase).TrimStart();
-
-        string title = _tagRegex.Replace(
-            cleanedName,
-            (match) =>
-            {
-                for (int i = 1; i < match.Groups.Count; ++i)
-                {
-                    Group g = match.Groups[i];
-                    if (g.Success)
-                    {
-                        tags.Add(g.Value);
-                    }
-                }
-
-                return string.Empty;
-            });
-
-        // Tag prefixes separated by the a character in the unicode Block Elements range
-        int stripLength = 0;
-        for (int i = 0; i < title.Length; i++)
+        try
         {
-            char c = title[i];
-            if (c >= '\u2580' && c <= '\u259F')
+            List<string> tags = [];
+
+            // Strip country/language prefixes like "| NL |", "| DE |", "| FR |", etc. from the start
+            // This pattern matches: | (optional space) 2-3 letters (optional space) | (optional space)
+            // Also handles variations like "|NL|", "| NL|", "|NL |", etc.
+            string cleanedName = Regex.Replace(
+                name,
+                @"^\|\s*[A-Z]{2,3}\s*\|",
+                string.Empty,
+                RegexOptions.IgnoreCase).TrimStart();
+
+            // If cleaned name is empty after prefix removal, use original name
+            if (string.IsNullOrWhiteSpace(cleanedName))
             {
-                tags.Add(title[stripLength..i].Trim());
-                stripLength = i + 1;
+                cleanedName = name;
             }
-        }
 
-        return new ParsedName
+            string title = _tagRegex.Replace(
+                cleanedName,
+                (match) =>
+                {
+                    for (int i = 1; i < match.Groups.Count; ++i)
+                    {
+                        Group g = match.Groups[i];
+                        if (g.Success)
+                        {
+                            tags.Add(g.Value);
+                        }
+                    }
+
+                    return string.Empty;
+                });
+
+            // Tag prefixes separated by the a character in the unicode Block Elements range
+            int stripLength = 0;
+            for (int i = 0; i < title.Length; i++)
+            {
+                char c = title[i];
+                if (c >= '\u2580' && c <= '\u259F')
+                {
+                    tags.Add(title[stripLength..i].Trim());
+                    stripLength = i + 1;
+                }
+            }
+
+            string finalTitle = stripLength < title.Length ? title[stripLength..].Trim() : title.Trim();
+
+            // Ensure we never return an empty title - fallback to original name if needed
+            if (string.IsNullOrWhiteSpace(finalTitle))
+            {
+                finalTitle = name.Trim();
+            }
+
+            return new ParsedName
+            {
+                Title = finalTitle,
+                Tags = [.. tags],
+            };
+        }
+        catch
         {
-            Title = title[stripLength..].Trim(),
-            Tags = [.. tags],
-        };
+            // If anything goes wrong, return the original name to prevent breaking the channel
+            return new ParsedName { Title = name ?? string.Empty, Tags = [] };
+        }
     }
 
     private bool IsConfigured(SerializableDictionary<int, HashSet<int>> config, int category, int id)
