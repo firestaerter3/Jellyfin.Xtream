@@ -112,11 +112,11 @@ public partial class StreamService(IXtreamClient xtreamClient)
 
         // Strip country/language prefixes like "| NL |", "| DE |", "| FR |", etc. from the start
         // This pattern matches: | (space) 2-3 uppercase letters (space) |
-        string cleanedName = System.Text.RegularExpressions.Regex.Replace(
+        string cleanedName = Regex.Replace(
             name,
             @"^\|\s*[A-Z]{2,3}\s*\|",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         string title = _tagRegex.Replace(
             cleanedName,
