@@ -84,7 +84,7 @@ public class XtreamController(IXtreamClient xtreamClient, ILogger<XtreamControll
         try
         {
             Plugin plugin = Plugin.Instance;
-            
+
             // Check if credentials are configured
             if (string.IsNullOrWhiteSpace(plugin.Configuration.BaseUrl) ||
                 string.IsNullOrWhiteSpace(plugin.Configuration.Username) ||
@@ -106,21 +106,21 @@ public class XtreamController(IXtreamClient xtreamClient, ILogger<XtreamControll
                 ServerTime = info.ServerInfo.TimeNow,
                 ServerTimezone = info.ServerInfo.Timezone,
                 Status = info.UserInfo.Status,
-                SupportsMpegTs = info.UserInfo.AllowedOutputFormats.Contains("ts"),
+                SupportsMpegTs = info.UserInfo.AllowedOutputFormats.Contains("ts", StringComparison.Ordinal),
             });
         }
         catch (HttpRequestException ex)
         {
             string errorMessage = "Connection failed";
-            if (ex.Message.Contains("No such host is known") || ex.Message.Contains("Name or service not known"))
+            if (ex.Message.Contains("No such host is known", StringComparison.Ordinal) || ex.Message.Contains("Name or service not known", StringComparison.Ordinal))
             {
                 errorMessage = "Failed: Cannot resolve server hostname. Check Base URL.";
             }
-            else if (ex.Message.Contains("Connection refused") || ex.Message.Contains("No connection could be made"))
+            else if (ex.Message.Contains("Connection refused", StringComparison.Ordinal) || ex.Message.Contains("No connection could be made", StringComparison.Ordinal))
             {
                 errorMessage = "Failed: Connection refused. Server may be down or Base URL is incorrect.";
             }
-            else if (ex.Message.Contains("timeout") || ex.Message.Contains("timed out"))
+            else if (ex.Message.Contains("timeout", StringComparison.Ordinal) || ex.Message.Contains("timed out", StringComparison.Ordinal))
             {
                 errorMessage = "Failed: Connection timeout. Server may be slow or unreachable.";
             }
