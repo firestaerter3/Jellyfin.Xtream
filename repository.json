@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "FIX: JavaScript now properly displays detailed error messages from the backend.\n\n**What's Fixed:**\n- The credentials page now shows the detailed error messages returned by the backend\n- Instead of generic 'Failed. Check server logs.', you'll see specific messages like:\n  - 'Failed: Cannot resolve server hostname. Check Base URL.'\n  - 'Failed: Connection refused. Server may be down or Base URL is incorrect.'\n  - 'Failed: Connection timeout. Server may be slow or unreachable.'\n\n**Why This Matters:**\nThe backend was already generating detailed error messages (since v0.9.2.4), but the JavaScript wasn't displaying them. This fix ensures you can see what's actually wrong with the connection.\n\n**To See the Fix:**\n1. Install v0.9.2.5\n2. Go to plugin settings → Credentials tab\n3. The provider status will now show the specific error message",
+        "checksum": "1c1202af6aa5e9e7a990f8ba9c99d634",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.5/jellyfin-xtream-flat-view_0.9.2.5.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-23T21:56:08Z",
+        "version": "0.9.2.5"
+      },
+      {
         "changelog": "IMPROVEMENT: Better error messages for provider connection failures.\n\n**What's New:**\n- Provider status now shows specific error messages instead of generic 'Failed'\n- Helps diagnose connection issues with detailed error information\n- Error messages indicate specific problems:\n  - Hostname resolution failures\n  - Connection refused (server down or wrong URL)\n  - Timeout issues\n  - Credential validation errors\n\n**Why This Helps:**\nInstead of just seeing 'Failed. Check server logs.', you'll now see messages like:\n- 'Failed: Cannot resolve server hostname. Check Base URL.'\n- 'Failed: Connection refused. Server may be down or Base URL is incorrect.'\n- 'Failed: Request timeout. Server may be slow or unreachable.'\n\nThis makes it much easier to diagnose and fix connection problems without having to dig through server logs.",
         "checksum": "f6da65dd3ae4c3912d583e0f5b6e0a0d",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.4/jellyfin-xtream-flat-view_0.9.2.4.zip",
