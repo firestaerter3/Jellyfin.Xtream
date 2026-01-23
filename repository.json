@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "CRITICAL FIX: Prevents plugin from crashing on startup when provider connection fails.\n\n**Changes:**\n- Channels now return empty results instead of throwing exceptions\n- Added defensive checks for plugin instance availability  \n- Improved error handling in flattened view methods\n- This should fix the persistent 'Restart' status issue\n\n**What this fixes:**\n- Plugin status stuck on 'Restart' even after rebooting\n- Plugin failing to start when Xtream provider connection is unavailable\n- Libraries disappearing when provider connection fails\n\nThe plugin will now start successfully even if the provider connection fails, allowing you to fix the connection issue without the plugin being stuck in a restart loop.",
+        "checksum": "993b40ae1a294fb94bd5b7322497c945",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.3/jellyfin-xtream-flat-view_0.9.2.3.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-23T21:37:41Z",
+        "version": "0.9.2.3"
+      },
+      {
         "changelog": "CRITICAL FIX: Restored VOD and Series libraries. Added comprehensive error handling in ParseName to prevent channels from breaking. Includes fallback to original name if processing fails or results in empty title.",
         "checksum": "27e1e7ad0388ab65c436344a0f42cc3c",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.2-flat-view/jellyfin-xtream-flat-view_0.9.2.2.zip",
