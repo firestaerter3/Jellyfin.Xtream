@@ -310,7 +310,19 @@ public partial class StreamService(IXtreamClient xtreamClient)
             return new List<Tuple<SeriesStreamInfo, int>>();
         }
 
-        return series.Episodes.Keys.Select((int seasonId) => new Tuple<SeriesStreamInfo, int>(series, seasonId));
+        // Use Seasons collection if available, otherwise fall back to Episodes.Keys
+        if (series.Seasons != null && series.Seasons.Count > 0)
+        {
+            return series.Seasons.Select((Season season) => new Tuple<SeriesStreamInfo, int>(series, season.SeasonId));
+        }
+
+        // Fallback to episode keys if seasons collection is empty
+        if (series.Episodes != null && series.Episodes.Count > 0)
+        {
+            return series.Episodes.Keys.Select((int seasonId) => new Tuple<SeriesStreamInfo, int>(series, seasonId));
+        }
+
+        return new List<Tuple<SeriesStreamInfo, int>>();
     }
 
     /// <summary>
