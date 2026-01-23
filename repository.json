@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "FIX: Seasons are now properly displayed for series.\n\n**What's Fixed:**\n- GetSeasons now uses the Seasons collection from the API response\n- Added fallback to Episodes.Keys if Seasons collection is empty\n- Added null checks to prevent exceptions when Episodes dictionary is null\n\n**Why This Matters:**\nPreviously, seasons were only retrieved from the Episodes dictionary keys, which could be empty or null. Now the code properly uses the Seasons collection from the API, ensuring all seasons are displayed correctly.\n\n**To Apply:**\n1. Install v0.9.2.6\n2. Refresh the series library or restart Jellyfin\n3. Seasons should now appear when viewing a series",
+        "checksum": "dd0f2bba400a4f8e1e03cd326c345755",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.6/jellyfin-xtream-flat-view_0.9.2.6.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-23T22:09:19Z",
+        "version": "0.9.2.6"
+      },
+      {
         "changelog": "FIX: JavaScript now properly displays detailed error messages from the backend.\n\n**What's Fixed:**\n- The credentials page now shows the detailed error messages returned by the backend\n- Instead of generic 'Failed. Check server logs.', you'll see specific messages like:\n  - 'Failed: Cannot resolve server hostname. Check Base URL.'\n  - 'Failed: Connection refused. Server may be down or Base URL is incorrect.'\n  - 'Failed: Connection timeout. Server may be slow or unreachable.'\n\n**Why This Matters:**\nThe backend was already generating detailed error messages (since v0.9.2.4), but the JavaScript wasn't displaying them. This fix ensures you can see what's actually wrong with the connection.\n\n**To See the Fix:**\n1. Install v0.9.2.5\n2. Go to plugin settings → Credentials tab\n3. The provider status will now show the specific error message",
         "checksum": "1c1202af6aa5e9e7a990f8ba9c99d634",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.5/jellyfin-xtream-flat-view_0.9.2.5.zip",
