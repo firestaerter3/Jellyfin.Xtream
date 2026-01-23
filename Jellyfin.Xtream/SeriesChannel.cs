@@ -91,6 +91,17 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     {
         try
         {
+            // Check if plugin instance is available
+            if (Plugin.Instance == null)
+            {
+                logger.LogWarning("Plugin instance not available");
+                return new ChannelItemResult()
+                {
+                    Items = [],
+                    TotalRecordCount = 0,
+                };
+            }
+
             if (string.IsNullOrEmpty(query.FolderId))
             {
                 // Check if flat series view is enabled
@@ -121,8 +132,13 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get channel items");
-            throw;
+            logger.LogError(ex, "Failed to get channel items - returning empty result to prevent plugin crash");
+            // Return empty result instead of throwing to allow plugin to start even if provider connection fails
+            return new ChannelItemResult()
+            {
+                Items = [],
+                TotalRecordCount = 0,
+            };
         }
 
         return new ChannelItemResult()
@@ -253,24 +269,44 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetAllSeriesFlattened(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
-        List<ChannelItemInfo> items = new();
-
-        // Get all series from all selected categories
-        foreach (Category category in categories)
+        try
         {
-            IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
-            items.AddRange(series.Select(CreateChannelItemInfo));
+            IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+            List<ChannelItemInfo> items = new();
+
+            // Get all series from all selected categories
+            foreach (Category category in categories)
+            {
+                try
+                {
+                    IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
+                    items.AddRange(series.Select(CreateChannelItemInfo));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to get series for category {CategoryId}", category.CategoryId);
+                    // Continue with other categories even if one fails
+                }
+            }
+
+            // Sort alphabetically for consistent display
+            items = items.OrderBy(item => item.Name).ToList();
+
+            return new()
+            {
+                Items = items,
+                TotalRecordCount = items.Count
+            };
         }
-
-        // Sort alphabetically for consistent display
-        items = items.OrderBy(item => item.Name).ToList();
-
-        return new()
+        catch (Exception ex)
         {
-            Items = items,
-            TotalRecordCount = items.Count
-        };
+            logger.LogError(ex, "Failed to get all series flattened - returning empty result");
+            return new()
+            {
+                Items = [],
+                TotalRecordCount = 0
+            };
+        }
     }
 
     private async Task<ChannelItemResult> GetSeries(int categoryId, CancellationToken cancellationToken)

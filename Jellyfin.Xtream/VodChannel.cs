@@ -90,6 +90,17 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
     {
         try
         {
+            // Check if plugin instance is available
+            if (Plugin.Instance == null)
+            {
+                logger.LogWarning("Plugin instance not available");
+                return new ChannelItemResult()
+                {
+                    Items = [],
+                    TotalRecordCount = 0,
+                };
+            }
+
             if (string.IsNullOrEmpty(query.FolderId))
             {
                 // Check if flat VOD view is enabled
@@ -115,8 +126,13 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get channel items");
-            throw;
+            logger.LogError(ex, "Failed to get channel items - returning empty result to prevent plugin crash");
+            // Return empty result instead of throwing to allow plugin to start even if provider connection fails
+            return new ChannelItemResult()
+            {
+                Items = [],
+                TotalRecordCount = 0,
+            };
         }
     }
 
@@ -165,24 +181,44 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
 
     private async Task<ChannelItemResult> GetAllStreamsFlattened(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
-        List<ChannelItemInfo> items = new();
-
-        // Get all streams from all selected categories
-        foreach (Category category in categories)
+        try
         {
-            IEnumerable<StreamInfo> streams = await Plugin.Instance.StreamService.GetVodStreams(category.CategoryId, cancellationToken).ConfigureAwait(false);
-            items.AddRange(await Task.WhenAll(streams.Select(CreateChannelItemInfo)).ConfigureAwait(false));
+            IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+            List<ChannelItemInfo> items = new();
+
+            // Get all streams from all selected categories
+            foreach (Category category in categories)
+            {
+                try
+                {
+                    IEnumerable<StreamInfo> streams = await Plugin.Instance.StreamService.GetVodStreams(category.CategoryId, cancellationToken).ConfigureAwait(false);
+                    items.AddRange(await Task.WhenAll(streams.Select(CreateChannelItemInfo)).ConfigureAwait(false));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to get VOD streams for category {CategoryId}", category.CategoryId);
+                    // Continue with other categories even if one fails
+                }
+            }
+
+            // Sort alphabetically for consistent display
+            items = items.OrderBy(item => item.Name).ToList();
+
+            return new()
+            {
+                Items = items,
+                TotalRecordCount = items.Count
+            };
         }
-
-        // Sort alphabetically for consistent display
-        items = items.OrderBy(item => item.Name).ToList();
-
-        return new()
+        catch (Exception ex)
         {
-            Items = items,
-            TotalRecordCount = items.Count
-        };
+            logger.LogError(ex, "Failed to get all streams flattened - returning empty result");
+            return new()
+            {
+                Items = [],
+                TotalRecordCount = 0
+            };
+        }
     }
 
     private async Task<ChannelItemResult> GetStreams(int categoryId, CancellationToken cancellationToken)
