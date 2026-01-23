@@ -27,15 +27,40 @@ export default function (view) {
       const mpegTs = view.querySelector("#ProviderMpegTs");
 
       Xtream.fetchJson('Xtream/TestProvider').then(response => {
-        status.innerText = response.Status;
-        expiry.innerText = response.ExpiryDate;
-        cons.innerText = response.ActiveConnections;
-        maxCons.innerText = response.MaxConnections;
-        time.innerText = response.ServerTime;
-        timezone.innerText = response.ServerTimezone;
-        mpegTs.innerText = response.SupportsMpegTs;
-      }).catch((_) => {
-        status.innerText = "Failed. Check server logs.";
+        // Always display the Status field, even if it contains an error message
+        status.innerText = response.Status || "Unknown status";
+        // Only show other fields if status doesn't start with "Failed"
+        if (response.Status && !response.Status.toLowerCase().startsWith("failed")) {
+          expiry.innerText = response.ExpiryDate || "";
+          cons.innerText = response.ActiveConnections || "";
+          maxCons.innerText = response.MaxConnections || "";
+          time.innerText = response.ServerTime || "";
+          timezone.innerText = response.ServerTimezone || "";
+          mpegTs.innerText = response.SupportsMpegTs || "";
+        } else {
+          // Clear fields on error
+          expiry.innerText = "";
+          cons.innerText = "";
+          maxCons.innerText = "";
+          time.innerText = "";
+          timezone.innerText = "";
+          mpegTs.innerText = "";
+        }
+      }).catch((error) => {
+        // If the request fails completely (network error, etc.), show generic message
+        // But first try to extract any error details
+        let errorMessage = "Failed. Check server logs.";
+        if (error && error.response && error.response.data) {
+          const errorData = error.response.data;
+          if (errorData.Status) {
+            errorMessage = errorData.Status;
+          } else if (errorData.message) {
+            errorMessage = `Failed: ${errorData.message}`;
+          }
+        } else if (error && error.message) {
+          errorMessage = `Failed: ${error.message}`;
+        }
+        status.innerText = errorMessage;
         expiry.innerText = "";
         cons.innerText = "";
         maxCons.innerText = "";
