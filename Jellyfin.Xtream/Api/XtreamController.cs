@@ -13,8 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +36,7 @@ namespace Jellyfin.Xtream.Api;
 [ApiController]
 [Route("[controller]")]
 [Produces(MediaTypeNames.Application.Json)]
-public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
+public class XtreamController(IXtreamClient xtreamClient, ILogger<XtreamController> logger) : ControllerBase
 {
     private static CategoryResponse CreateCategoryResponse(Category category) =>
         new()
@@ -78,18 +81,80 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     [HttpGet("TestProvider")]
     public async Task<ActionResult<ProviderTestResponse>> TestProvider(CancellationToken cancellationToken)
     {
-        Plugin plugin = Plugin.Instance;
-        PlayerApi info = await xtreamClient.GetUserAndServerInfoAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
-        return Ok(new ProviderTestResponse()
+        try
         {
-            ActiveConnections = info.UserInfo.ActiveCons,
-            ExpiryDate = info.UserInfo.ExpDate,
-            MaxConnections = info.UserInfo.MaxConnections,
-            ServerTime = info.ServerInfo.TimeNow,
-            ServerTimezone = info.ServerInfo.Timezone,
-            Status = info.UserInfo.Status,
-            SupportsMpegTs = info.UserInfo.AllowedOutputFormats.Contains("ts"),
-        });
+            Plugin plugin = Plugin.Instance;
+            
+            // Check if credentials are configured
+            if (string.IsNullOrWhiteSpace(plugin.Configuration.BaseUrl) ||
+                string.IsNullOrWhiteSpace(plugin.Configuration.Username) ||
+                string.IsNullOrWhiteSpace(plugin.Configuration.Password))
+            {
+                logger.LogWarning("Provider test failed: Credentials not configured");
+                return Ok(new ProviderTestResponse()
+                {
+                    Status = "Failed: Credentials not configured. Please enter Base URL, Username, and Password.",
+                });
+            }
+
+            PlayerApi info = await xtreamClient.GetUserAndServerInfoAsync(plugin.Creds, cancellationToken).ConfigureAwait(false);
+            return Ok(new ProviderTestResponse()
+            {
+                ActiveConnections = info.UserInfo.ActiveCons,
+                ExpiryDate = info.UserInfo.ExpDate,
+                MaxConnections = info.UserInfo.MaxConnections,
+                ServerTime = info.ServerInfo.TimeNow,
+                ServerTimezone = info.ServerInfo.Timezone,
+                Status = info.UserInfo.Status,
+                SupportsMpegTs = info.UserInfo.AllowedOutputFormats.Contains("ts"),
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMessage = "Connection failed";
+            if (ex.Message.Contains("No such host is known") || ex.Message.Contains("Name or service not known"))
+            {
+                errorMessage = "Failed: Cannot resolve server hostname. Check Base URL.";
+            }
+            else if (ex.Message.Contains("Connection refused") || ex.Message.Contains("No connection could be made"))
+            {
+                errorMessage = "Failed: Connection refused. Server may be down or Base URL is incorrect.";
+            }
+            else if (ex.Message.Contains("timeout") || ex.Message.Contains("timed out"))
+            {
+                errorMessage = "Failed: Connection timeout. Server may be slow or unreachable.";
+            }
+            else if (ex.InnerException is WebException webEx && webEx.Status == WebExceptionStatus.ConnectFailure)
+            {
+                errorMessage = "Failed: Cannot connect to server. Check Base URL and network connectivity.";
+            }
+            else
+            {
+                errorMessage = $"Failed: {ex.Message}";
+            }
+
+            logger.LogError(ex, "Provider test failed: {ErrorMessage}", errorMessage);
+            return Ok(new ProviderTestResponse()
+            {
+                Status = errorMessage,
+            });
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Provider test failed: Request timeout");
+            return Ok(new ProviderTestResponse()
+            {
+                Status = "Failed: Request timeout. Server may be slow or unreachable.",
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Provider test failed: Unexpected error");
+            return Ok(new ProviderTestResponse()
+            {
+                Status = $"Failed: {ex.Message}. Check server logs for details.",
+            });
+        }
     }
 
     /// <summary>
