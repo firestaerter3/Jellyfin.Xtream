@@ -322,14 +322,29 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetSeasons(int seriesId, CancellationToken cancellationToken)
     {
-        IEnumerable<Tuple<SeriesStreamInfo, int>> seasons = await Plugin.Instance.StreamService.GetSeasons(seriesId, cancellationToken).ConfigureAwait(false);
-        List<ChannelItemInfo> items = new(
-            seasons.Select((Tuple<SeriesStreamInfo, int> tuple) => CreateChannelItemInfo(seriesId, tuple.Item1, tuple.Item2)));
-        return new()
+        try
         {
-            Items = items,
-            TotalRecordCount = items.Count
-        };
+            IEnumerable<Tuple<SeriesStreamInfo, int>> seasons = await Plugin.Instance.StreamService.GetSeasons(seriesId, cancellationToken).ConfigureAwait(false);
+            List<ChannelItemInfo> items = new(
+                seasons.Select((Tuple<SeriesStreamInfo, int> tuple) => CreateChannelItemInfo(seriesId, tuple.Item1, tuple.Item2)));
+            
+            logger.LogInformation("GetSeasons for series {SeriesId}: Found {Count} seasons", seriesId, items.Count);
+            
+            return new()
+            {
+                Items = items,
+                TotalRecordCount = items.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting seasons for series {SeriesId}", seriesId);
+            return new()
+            {
+                Items = [],
+                TotalRecordCount = 0
+            };
+        }
     }
 
     private async Task<ChannelItemResult> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
