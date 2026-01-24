@@ -109,6 +109,12 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>A <see cref="ParsedName"/> struct containing the cleaned title and parsed tags.</returns>
     public static ParsedName ParseName(string name)
     {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new ParsedName(string.Empty, []);
+        }
+
+        string originalName = name;
         List<string> tags = [];
         string title = _tagRegex.Replace(
             name,
@@ -125,6 +131,37 @@ public partial class StreamService(IXtreamClient xtreamClient)
 
                 return string.Empty;
             });
+
+        // Additional cleanup: Remove any remaining pipe-like characters and their content
+        // This handles cases where the regex might have missed something or edge cases
+        // Pattern: pipe, optional spaces, content (non-pipe, non-space), optional spaces, pipe
+        string beforeFallback = title;
+        title = System.Text.RegularExpressions.Regex.Replace(
+            title,
+            @"[\|│┃｜]\s*[^\|│┃｜\s]+\s*[\|│┃｜]",
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.None);
+
+        // Also remove standalone pipe patterns without spaces (e.g., ┃NL┃)
+        title = System.Text.RegularExpressions.Regex.Replace(
+            title,
+            @"[\|│┃｜][^\|│┃｜]+[\|│┃｜]",
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.None);
+
+        // Debug logging for titles containing NL or pipe characters
+        if (originalName.Contains("NL", StringComparison.OrdinalIgnoreCase) ||
+            originalName.Contains('┃', StringComparison.Ordinal) ||
+            originalName.Contains('│', StringComparison.Ordinal) ||
+            originalName.Contains('|', StringComparison.Ordinal) ||
+            originalName.Contains('｜', StringComparison.Ordinal))
+        {
+            // Log to console which Jellyfin will capture in logs
+            Console.WriteLine($"[Jellyfin.Xtream.ParseName] Original: '{originalName}'");
+            Console.WriteLine($"[Jellyfin.Xtream.ParseName] After regex: '{beforeFallback}'");
+            Console.WriteLine($"[Jellyfin.Xtream.ParseName] After fallback: '{title}'");
+            Console.WriteLine($"[Jellyfin.Xtream.ParseName] Tags found: [{string.Join(", ", tags)}]");
+        }
 
         // Tag prefixes separated by the a character in the unicode Block Elements range
         int stripLength = 0;

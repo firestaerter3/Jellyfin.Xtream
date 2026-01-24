@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.3.5"
+version: "0.9.3.6"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,8 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  - DEBUG: Added logging to ParseName to diagnose ┃NL┃ tag removal issues
+  - IMPROVED: Enhanced ParseName with additional fallback regex patterns for pipe characters
   - FIXED: Cache refresh getting stuck at "Fetching series list..." - Added error handling and progress updates per category
   - FIXED: Multiple confirmation dialogs when clearing cache - Prevented duplicate event listeners
   - IMPROVED: Better logging and progress reporting during cache refresh to identify stuck categories
