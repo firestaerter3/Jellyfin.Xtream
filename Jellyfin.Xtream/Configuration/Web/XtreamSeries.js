@@ -25,15 +25,14 @@ export default function (view) {
     // Poll cache status every 2 seconds
     let statusPollInterval;
     function updateCacheStatus() {
-      ApiClient.fetch('Xtream/SeriesCacheStatus')
-        .then((response) => response.json())
+      Xtream.fetchJson('Xtream/SeriesCacheStatus')
         .then((status) => {
           if (status.IsRefreshing || status.Progress > 0 || status.IsCachePopulated) {
             cacheStatusContainer.style.display = 'block';
             const progressPercent = Math.round(status.Progress * 100);
             cacheProgressFill.style.width = progressPercent + '%';
             cacheStatusText.textContent = status.Status || 'Idle';
-            
+
             if (status.IsRefreshing) {
               cacheStatusText.style.color = '#00a4dc';
             } else if (status.Progress >= 1.0) {
@@ -50,8 +49,7 @@ export default function (view) {
         });
     }
 
-    // Start polling when view is shown
-    updateCacheStatus();
+    // Start polling when view is shown (after table loads to ensure Xtream is available)
     statusPollInterval = setInterval(updateCacheStatus, 2000);
 
     // Clean up interval when view is hidden
@@ -67,6 +65,9 @@ export default function (view) {
       () => Xtream.fetchJson('Xtream/SeriesCategories'),
       (categoryId) => Xtream.fetchJson(`Xtream/SeriesCategories/${categoryId}`),
     ).then((data) => {
+      // Start cache status polling after table is loaded
+      updateCacheStatus();
+
       view.querySelector('#XtreamSeriesForm').addEventListener('submit', (e) => {
         Dashboard.showLoadingMsg();
 
@@ -83,6 +84,9 @@ export default function (view) {
         e.preventDefault();
         return false;
       });
+    }).catch((error) => {
+      console.error('Failed to load series categories:', error);
+      Dashboard.hideLoadingMsg();
     });
   }));
 }
