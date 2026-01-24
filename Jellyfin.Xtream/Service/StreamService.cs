@@ -175,9 +175,19 @@ public partial class StreamService(IXtreamClient xtreamClient)
             }
         }
 
+        // Final cleanup: trim and remove any remaining leading/trailing pipe characters or spaces
+        string finalTitle = title[stripLength..].Trim();
+
+        // Remove any remaining pipe-like characters or spaces at start/end
+        finalTitle = System.Text.RegularExpressions.Regex.Replace(
+            finalTitle,
+            @"^[\|│┃｜\s]+|[\|│┃｜\s]+$",
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.None);
+
         return new ParsedName
         {
-            Title = title[stripLength..].Trim(),
+            Title = finalTitle.Trim(),
             Tags = [.. tags],
         };
     }

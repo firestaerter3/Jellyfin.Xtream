@@ -251,10 +251,20 @@ public class SeriesCacheService : IDisposable
                         // Store last_modified for incremental updates
                         _seriesLastModified[series.SeriesId] = series.LastModified;
                     }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogWarning("Cache refresh cancelled while processing series {SeriesId}", series.SeriesId);
+                        throw; // Re-throw cancellation
+                    }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "Failed to cache data for series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
-                        Interlocked.Increment(ref processedSeries);
+                        _logger?.LogError(ex, "Failed to cache data for series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
+                        int current = Interlocked.Increment(ref processedSeries);
+                        // Update progress even on error
+                        double progressValue = 0.1 + (current * 0.9 / totalToProcess);
+                        _currentProgress = progressValue;
+                        _currentStatus = $"Processing {current}/{totalToProcess} (errors may occur)";
+                        progress?.Report(progressValue);
                     }
                     finally
                     {
