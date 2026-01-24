@@ -77,6 +77,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool FlattenVodView { get; set; } = false;
 
     /// <summary>
+    /// Gets or sets the cache expiration time in minutes for series data.
+    /// Default is 60 minutes (1 hour). Data is refreshed when this time expires or when configuration changes.
+    /// </summary>
+    public int SeriesCacheExpirationMinutes { get; set; } = 60;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];

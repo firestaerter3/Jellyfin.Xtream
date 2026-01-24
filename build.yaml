@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.1.5"
+version: "0.9.2.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,13 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  - NEW: Pre-fetch and cache all series data upfront - No more lazy loading delays!
+  - All series, seasons, and episodes are now cached when plugin loads or configuration changes
+  - Navigation is instant - data loads from cache instead of making API calls on every page visit
+  - Cache automatically refreshes when plugin configuration changes
+  - NEW: Configurable cache expiration time (default: 60 minutes / 1 hour)
+  - Users can adjust cache expiration in Series configuration page (1-1440 minutes)
+  - Lower values = fresher data but more API calls, Higher values = fewer calls but potentially stale data
   - FIXED: Missing episodes in some series - Added fallback to search all episodes by Season property when dictionary lookup fails
   - This handles cases where episodes might be stored under different season ID keys in the API response
   - Fixed tag parsing for Unicode pipe characters (┃NL┃ tags now stripped from titles)

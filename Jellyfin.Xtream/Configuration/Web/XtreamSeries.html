@@ -18,6 +18,13 @@
             When enabled, all series from selected categories appear directly in the library without category folders. Seasons and episodes remain organized under each series.
           </div>
         </div>
+        <div class="inputContainer">
+          <label class="inputLabel" for="SeriesCacheExpirationMinutes">Cache Expiration (minutes)</label>
+          <input is="emby-input" type="number" id="SeriesCacheExpirationMinutes" name="SeriesCacheExpirationMinutes" min="1" max="1440" />
+          <div class="fieldDescription">
+            How long to cache series data before refreshing. Default is 60 minutes (1 hour). Lower values mean fresher data but more API calls. Higher values reduce API calls but data may be stale longer.
+          </div>
+        </div>
         <div class="sectionTitleContainer flex align-items-center">
           <h2 class="sectionTitle">Series selection</h2>
         </div>

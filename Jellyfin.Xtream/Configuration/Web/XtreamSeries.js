@@ -11,9 +11,11 @@ export default function (view) {
     const getConfig = ApiClient.getPluginConfiguration(pluginId);
     const visible = view.querySelector("#Visible");
     const flattenSeriesView = view.querySelector("#FlattenSeriesView");
+    const cacheExpirationMinutes = view.querySelector("#SeriesCacheExpirationMinutes");
     getConfig.then((config) => {
       visible.checked = config.IsSeriesVisible;
       flattenSeriesView.checked = config.FlattenSeriesView || false;
+      cacheExpirationMinutes.value = config.SeriesCacheExpirationMinutes || 60;
     });
     const table = view.querySelector('#SeriesContent');
     Xtream.populateCategoriesTable(
@@ -28,6 +30,7 @@ export default function (view) {
         ApiClient.getPluginConfiguration(pluginId).then((config) => {
           config.IsSeriesVisible = visible.checked;
           config.FlattenSeriesView = flattenSeriesView.checked;
+          config.SeriesCacheExpirationMinutes = parseInt(cacheExpirationMinutes.value, 10) || 60;
           config.Series = data;
           ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
             Dashboard.processPluginConfigurationUpdateResult(result);

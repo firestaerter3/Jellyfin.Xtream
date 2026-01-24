@@ -241,7 +241,10 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetCategories(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        // Try cache first
+        IEnumerable<Category>? cachedCategories = Plugin.Instance.SeriesCacheService.GetCachedCategories();
+        IEnumerable<Category> categories = cachedCategories ?? await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        
         List<ChannelItemInfo> items = new(
             categories.Select((Category category) => StreamService.CreateChannelItemInfo(StreamService.SeriesCategoryPrefix, category)));
         return new()
@@ -253,7 +256,10 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetAllSeriesFlattened(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        // Try cache first for categories
+        IEnumerable<Category>? cachedCategories = Plugin.Instance.SeriesCacheService.GetCachedCategories();
+        IEnumerable<Category> categories = cachedCategories ?? await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
+        
         List<ChannelItemInfo> items = new();
 
         // Get all series from all selected categories
@@ -286,7 +292,21 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetSeasons(int seriesId, CancellationToken cancellationToken)
     {
-        IEnumerable<Tuple<SeriesStreamInfo, int>> seasons = await Plugin.Instance.StreamService.GetSeasons(seriesId, cancellationToken).ConfigureAwait(false);
+        // Try cache first
+        SeriesStreamInfo? cachedSeriesInfo = Plugin.Instance.SeriesCacheService.GetCachedSeriesInfo(seriesId);
+        
+        IEnumerable<Tuple<SeriesStreamInfo, int>> seasons;
+        if (cachedSeriesInfo != null)
+        {
+            // Use cached data - get season IDs from Episodes dictionary keys
+            seasons = cachedSeriesInfo.Episodes.Keys.Select(seasonId => new Tuple<SeriesStreamInfo, int>(cachedSeriesInfo, seasonId));
+        }
+        else
+        {
+            // Fallback to API call
+            seasons = await Plugin.Instance.StreamService.GetSeasons(seriesId, cancellationToken).ConfigureAwait(false);
+        }
+        
         List<ChannelItemInfo> items = new(
             seasons.Select((Tuple<SeriesStreamInfo, int> tuple) => CreateChannelItemInfo(seriesId, tuple.Item1, tuple.Item2)));
         return new()
@@ -298,9 +318,26 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
     {
-        IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> episodes = await Plugin.Instance.StreamService.GetEpisodes(seriesId, seasonId, cancellationToken).ConfigureAwait(false);
-        List<ChannelItemInfo> items = new List<ChannelItemInfo>(
-            episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));
+        // Try cache first
+        IEnumerable<Episode>? cachedEpisodes = Plugin.Instance.SeriesCacheService.GetCachedEpisodes(seriesId, seasonId);
+        Season? cachedSeason = Plugin.Instance.SeriesCacheService.GetCachedSeason(seriesId, seasonId);
+        SeriesStreamInfo? cachedSeriesInfo = Plugin.Instance.SeriesCacheService.GetCachedSeriesInfo(seriesId);
+        
+        List<ChannelItemInfo> items;
+        if (cachedEpisodes != null && cachedSeriesInfo != null)
+        {
+            // Use cached data
+            items = new List<ChannelItemInfo>(
+                cachedEpisodes.Select(episode => CreateChannelItemInfo(cachedSeriesInfo, cachedSeason, episode)));
+        }
+        else
+        {
+            // Fallback to API call
+            IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> episodes = await Plugin.Instance.StreamService.GetEpisodes(seriesId, seasonId, cancellationToken).ConfigureAwait(false);
+            items = new List<ChannelItemInfo>(
+                episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));
+        }
+        
         return new()
         {
             Items = items,

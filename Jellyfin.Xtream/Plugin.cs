@@ -25,7 +25,9 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Tasks;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace Jellyfin.Xtream;
 
@@ -35,6 +37,7 @@ namespace Jellyfin.Xtream;
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     private static Plugin? _instance;
+    private readonly ILogger<Plugin> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -43,7 +46,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <param name="xmlSerializer">Instance of the <see cref="IXmlSerializer"/> interface.</param>
     /// <param name="taskManager">Instance of the <see cref="ITaskManager"/> interface.</param>
     /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ITaskManager taskManager, IXtreamClient xtreamClient)
+    /// <param name="memoryCache">Instance of the <see cref="IMemoryCache"/> interface.</param>
+    /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
+    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ITaskManager taskManager, IXtreamClient xtreamClient, IMemoryCache memoryCache, ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         _instance = this;
@@ -55,6 +60,21 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
         StreamService = new(xtreamClient);
         TaskService = new(taskManager);
+        _logger = logger;
+        SeriesCacheService = new Service.SeriesCacheService(StreamService, memoryCache, logger);
+        
+        // Start cache refresh in background (don't await - let it run async)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize series cache");
+            }
+        });
     }
 
     /// <inheritdoc />
@@ -89,6 +109,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the task service instance.
     /// </summary>
     public TaskService TaskService { get; init; }
+
+    /// <summary>
+    /// Gets the series cache service instance.
+    /// </summary>
+    public Service.SeriesCacheService SeriesCacheService { get; init; }
 
     private static PluginPageInfo CreateStatic(string name) => new()
     {
@@ -129,6 +154,19 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             client.UpdateUserAgent();
         }
+
+        // Refresh series cache in background when configuration changes
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to refresh series cache after configuration update");
+            }
+        });
 
         // Force a refresh of TV guide on configuration update.
         // - This will update the TV channels.
