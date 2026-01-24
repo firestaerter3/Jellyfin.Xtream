@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.3.0"
+version: "0.9.3.1"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,9 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  - FIXED: Categories not showing in Series configuration page - Improved error handling and JSON parsing
+  - FIXED: Build errors - Added missing GetDefaultTriggers() method to SeriesCacheRefreshTask
+  - IMPROVED: Better error messages when categories fail to load (shows helpful troubleshooting steps)
   - NEW: Graphical progress indicator for cache refresh!
   - Progress bar and status shown in Series configuration page (updates every 2 seconds)
   - Scheduled task "Refresh Xtream Series Cache" appears in Dashboard → Scheduled Tasks

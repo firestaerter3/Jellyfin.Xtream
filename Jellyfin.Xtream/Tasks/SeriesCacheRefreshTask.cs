@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Tasks;
@@ -25,25 +26,39 @@ namespace Jellyfin.Xtream.Tasks;
 /// </summary>
 public class SeriesCacheRefreshTask : IScheduledTask
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the name of the task.
+    /// </summary>
     public string Name => "Refresh Xtream Series Cache";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the description of the task.
+    /// </summary>
     public string Description => "Pre-fetches and caches all series data (categories, series, seasons, episodes) for faster navigation.";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the category of the task.
+    /// </summary>
     public string Category => "Xtream";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the key of the task.
+    /// </summary>
     public string Key => "XtreamSeriesCacheRefresh";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets a value indicating whether the task is hidden.
+    /// </summary>
     public bool IsHidden => false;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets a value indicating whether the task is enabled.
+    /// </summary>
     public bool IsEnabled => true;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets a value indicating whether the task is logged.
+    /// </summary>
     public bool IsLogged => true;
 
     /// <inheritdoc />
@@ -59,9 +74,30 @@ public class SeriesCacheRefreshTask : IScheduledTask
         await Plugin.Instance.SeriesCacheService.RefreshCacheAsync(progress, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes the task without progress reporting.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Task representing the async operation.</returns>
     public Task ExecuteAsync(CancellationToken cancellationToken)
     {
         return ExecuteAsync(new Progress<double>(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets the default triggers for this task.
+    /// </summary>
+    /// <returns>Default triggers (runs every 60 minutes).</returns>
+    public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
+    {
+        // Default: Run every 60 minutes
+        return new[]
+        {
+            new TaskTriggerInfo
+            {
+                Type = TaskTriggerInfoType.IntervalTrigger,
+                IntervalTicks = TimeSpan.FromMinutes(60).Ticks
+            }
+        };
     }
 }

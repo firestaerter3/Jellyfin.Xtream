@@ -127,7 +127,7 @@ public class SeriesCacheService : IDisposable
                 {
                     categoryIndex++;
                     _logger?.LogInformation("Processing category {CategoryIndex}/{TotalCategories}: {CategoryName} (ID: {CategoryId})", categoryIndex, totalCategories, category.CategoryName, category.CategoryId);
-                    progress?.Report(0.1 + (categoryIndex - 1) * 0.8 / totalCategories); // 10% for categories, 80% for series processing
+                    progress?.Report(0.1 + (((categoryIndex - 1) * 0.8) / totalCategories)); // 10% for categories, 80% for series processing
 
                     IEnumerable<Series> seriesList = await _streamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
                     List<Series> seriesListItems = seriesList.ToList();
