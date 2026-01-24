@@ -31,18 +31,14 @@ namespace Jellyfin.Xtream.Service;
 /// </summary>
 public class SeriesCacheService : IDisposable
 {
-    /// <summary>
-    /// Maximum number of concurrent API requests during cache refresh.
-    /// </summary>
-    private const int MaxParallelRequests = 10;
-
     private readonly StreamService _streamService;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<SeriesCacheService>? _logger;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
-    private readonly SemaphoreSlim _apiThrottle = new(MaxParallelRequests, MaxParallelRequests);
     private readonly ConcurrentDictionary<int, DateTime> _seriesLastModified = new();
     private readonly ConcurrentDictionary<string, bool> _cacheKeys = new();
+    private SemaphoreSlim _apiThrottle;
+    private int _maxParallelism;
 
     private bool _isRefreshing = false;
     private double _currentProgress = 0.0;
@@ -61,6 +57,15 @@ public class SeriesCacheService : IDisposable
         _streamService = streamService;
         _memoryCache = memoryCache;
         _logger = logger;
+
+        // Get parallelism from configuration, default to 5 if not set
+        int maxParallel = Plugin.Instance?.Configuration?.MaxCacheRefreshParallelism ?? 5;
+        // Ensure it's at least 1 and not too high (cap at 20 to prevent abuse)
+        maxParallel = Math.Max(1, Math.Min(20, maxParallel));
+        _maxParallelism = maxParallel;
+        _apiThrottle = new SemaphoreSlim(maxParallel, maxParallel);
+
+        _logger?.LogInformation("SeriesCacheService initialized with {Parallelism} parallel requests", maxParallel);
     }
 
     /// <summary>
@@ -204,7 +209,7 @@ public class SeriesCacheService : IDisposable
                 _logger?.LogInformation(
                     "Processing {Count} series with {Parallelism} parallel requests...",
                     totalToProcess,
-                    MaxParallelRequests);
+                    _maxParallelism);
 
                 var tasks = seriesToFetch.Select(async series =>
                 {

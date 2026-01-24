@@ -84,6 +84,13 @@ public class PluginConfiguration : BasePluginConfiguration
     public int SeriesCacheExpirationMinutes { get; set; } = 0;
 
     /// <summary>
+    /// Gets or sets the maximum number of parallel API requests during cache refresh.
+    /// Default is 5. Increase if your provider allows more concurrent connections.
+    /// Too high may cause rate limiting or connection errors.
+    /// </summary>
+    public int MaxCacheRefreshParallelism { get; set; } = 5;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];
