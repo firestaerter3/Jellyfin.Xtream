@@ -34,7 +34,7 @@ public class SeriesCacheService : IDisposable
     /// <summary>
     /// Maximum number of concurrent API requests during cache refresh.
     /// </summary>
-    private const int MaxParallelRequests = 5;
+    private const int MaxParallelRequests = 10;
 
     private readonly StreamService _streamService;
     private readonly IMemoryCache _memoryCache;
@@ -199,6 +199,8 @@ public class SeriesCacheService : IDisposable
                 int skippedCount = allSeries.Count - seriesToFetch.Count;
 
                 // Process series in parallel with throttling
+                _currentStatus = $"Processing series... (0/{totalToProcess})";
+                progress?.Report(0.10);
                 _logger?.LogInformation(
                     "Processing {Count} series with {Parallelism} parallel requests...",
                     totalToProcess,
@@ -209,7 +211,20 @@ public class SeriesCacheService : IDisposable
                     await _apiThrottle.WaitAsync(cancellationToken).ConfigureAwait(false);
                     try
                     {
+                        // Log first few series to verify processing is working
+                        int beforeCount = Interlocked.CompareExchange(ref processedSeries, 0, 0);
+                        if (beforeCount < 5)
+                        {
+                            _logger?.LogInformation("Starting to process series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
+                        }
+
                         var result = await ProcessSeriesAsync(series, cachePrefix, cacheOptions, cancellationToken).ConfigureAwait(false);
+
+                        int afterCount = Interlocked.CompareExchange(ref processedSeries, 0, 0);
+                        if (afterCount < 5)
+                        {
+                            _logger?.LogInformation("Completed processing series {SeriesId}", series.SeriesId);
+                        }
 
                         // Update counters thread-safely
                         int current = Interlocked.Increment(ref processedSeries);
@@ -222,8 +237,8 @@ public class SeriesCacheService : IDisposable
                         _currentStatus = $"Processing {current}/{totalToProcess} ({seasonCount} seasons, {episodeCount} episodes)";
                         progress?.Report(progressValue);
 
-                        // Log every 10 series or at milestones
-                        if (current % 10 == 0 || current == totalToProcess)
+                        // Log every 10 series or at milestones (also log first few to see if it's working)
+                        if (current <= 5 || current % 10 == 0 || current == totalToProcess)
                         {
                             _logger?.LogInformation(
                                 "Progress: {Current}/{Total} series processed ({Seasons} seasons, {Episodes} episodes)",
