@@ -1,2 +1,4 @@
 [redacted-ip]==>YOUR_JELLYFIN_HOST
 temp==>YOUR_SSH_PASSWORD
+your-email@example.com==>YOUR_EMAIL
+/Users/your-email@example.com==>/path/to/repo
