@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "## What's Changed\n\n### Bug Fixes\n- **Fix tag parsing for Unicode pipe characters** - IPTV providers often use Unicode box-drawing characters (┃, │, ｜) instead of ASCII pipe (|) for country tags like `┃NL┃`. The `ParseName` function now correctly strips these tags from series and movie titles.\n\n### Supported tag formats\n- `[TAG]` - Square brackets\n- `|TAG|` - ASCII pipe\n- `┃TAG┃` - Box drawing heavy vertical (U+2503)\n- `│TAG│` - Box drawing light vertical (U+2502)\n- `｜TAG｜` - Fullwidth vertical line (U+FF5C)\n- Spaces inside pipes: `| TAG |`, `┃ TAG ┃`\n\n**Full Changelog**: https://github.com/rolandb5/Jellyfin.Xtream/compare/v0.9.2.7...v0.9.2.8",
+        "checksum": "45f7c9d592cf1054b7d0f0e481b0b6d0",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.8/jellyfin-xtream-flat-view_0.9.1.3.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-24T06:56:59Z",
+        "version": "0.9.1.3"
+      },
+      {
         "changelog": "Added explicit check for non-empty episodes collection. This ensures episodes are only returned when they actually exist.",
         "checksum": "5e00a0be5fa1b3a94167c45c4ff4ff68",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.3-flat-view/jellyfin-xtream-flat-view_0.9.1.3.zip",
