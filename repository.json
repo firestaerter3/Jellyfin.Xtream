@@ -8,6 +8,22 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "Added graphical progress indicator for cache refresh:\n\n\u2728 **New Features:**\n- Progress bar and status display in Series configuration page\n- Scheduled task 'Refresh Xtream Series Cache' in Dashboard \u2192 Scheduled Tasks\n- Real-time progress updates (every 2 seconds)\n- API endpoint /Xtream/SeriesCacheStatus for programmatic access\n\n\ud83d\udcca **Progress Display:**\n- Shows percentage complete (0-100%)\n- Current status message with detailed counts\n- Color-coded status (blue = in progress, green = complete)\n- Start and completion timestamps\n\n\ud83c\udfaf **Usage:**\n- View progress in Plugins \u2192 Series configuration page\n- Or in Dashboard \u2192 Scheduled Tasks \u2192 'Refresh Xtream Series Cache'\n- Task can be triggered manually or scheduled",
+        "checksum": "c43e15c989f30ebc2736f8a7b092a159",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.3.0/jellyfin-xtream-flat-view_0.9.3.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-24T11:32:25Z",
+        "version": "0.9.3.0"
+      },
+      {
+        "changelog": "Added detailed progress logging for cache refresh. See real-time progress in Jellyfin logs showing categories, series, seasons, and episodes being cached.",
+        "checksum": "abb31028ad1d1642e77bc7adc8e5ca29",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.1/jellyfin-xtream-flat-view_0.9.2.1.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-24T11:15:53Z",
+        "version": "0.9.2.1"
+      },
+      {
         "changelog": "**NEW: Pre-fetch and cache all series data upfront - No more lazy loading delays!**\n\n**Features:**\n- All series, seasons, and episodes are now cached when plugin loads or configuration changes\n- Navigation is instant - data loads from cache instead of making API calls on every page visit\n- Cache automatically refreshes when plugin configuration changes\n- **Configurable cache expiration time** (default: 60 minutes / 1 hour)\n- Users can adjust cache expiration in Series configuration page (1-1440 minutes)\n- Lower values = fresher data but more API calls\n- Higher values = fewer calls but potentially stale data\n\n**Fixes:**\n- Missing episodes in some series - Added fallback to search all episodes by Season property when dictionary lookup fails\n- This handles cases where episodes might be stored under different season ID keys in the API response\n\n**Technical:**\n- New SeriesCacheService handles all caching logic\n- Cache runs in background on plugin initialization (doesn't block startup)\n- Falls back to API calls if cache is unavailable\n- Cache expires based on configured time or refreshes on config change",
         "checksum": "4661450fde646e5bb660a297755fb39d",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.0/jellyfin-xtream-flat-view_0.9.2.0.zip",
