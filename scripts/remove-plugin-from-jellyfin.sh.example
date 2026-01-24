@@ -1,0 +1,133 @@
+#!/bin/bash
+# Script to completely remove Jellyfin.Xtream plugin from Jellyfin Docker container
+# Usage: ./scripts/remove-plugin-from-jellyfin.sh [container_name] [jellyfin_host]
+#
+# IMPORTANT: Copy this file to remove-plugin-from-jellyfin.sh and configure:
+# - JELLYFIN_HOST: Your Jellyfin server IP/hostname
+# - SSH_PASSWORD: Your SSH password (or use SSH keys instead)
+
+set -e
+
+CONTAINER_NAME="${1:-jellyfin}"
+JELLYFIN_HOST="${2:-YOUR_JELLYFIN_HOST}"
+SSH_PASSWORD="${SSH_PASSWORD:-YOUR_SSH_PASSWORD}"
+PLUGIN_GUID="5d774c35-8567-46d3-a950-9bb8227a0c5d"
+PLUGIN_NAME="Jellyfin.Xtream"
+
+echo "🧹 Removing $PLUGIN_NAME plugin from Jellyfin..."
+echo "Container: $CONTAINER_NAME"
+echo "Host: $JELLYFIN_HOST"
+echo ""
+
+# Function to execute commands in Docker container
+docker_exec() {
+    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no root@$JELLYFIN_HOST "docker exec $CONTAINER_NAME $@"
+}
+
+# Find Jellyfin data directory
+echo "📂 Finding Jellyfin data directory..."
+DATA_DIR=$(docker_exec sh -c 'echo $JF_CONFIG_DIR' 2>/dev/null || echo "/config")
+echo "Data directory: $DATA_DIR"
+echo ""
+
+# Plugin paths (Jellyfin stores plugins in /config/data/plugins/)
+PLUGINS_DIR="$DATA_DIR/data/plugins"
+CONFIG_DIR="$DATA_DIR/data/plugins/configurations"
+CACHE_DIR="$DATA_DIR/cache"
+
+echo "🔍 Searching for plugin files..."
+echo ""
+
+# Find and list plugin DLL
+echo "Looking for plugin DLL..."
+PLUGIN_DLL=$(docker_exec find "$PLUGINS_DIR" -name "*Xtream*.dll" 2>/dev/null | head -1 || echo "")
+if [ -n "$PLUGIN_DLL" ]; then
+    echo "  Found: $PLUGIN_DLL"
+else
+    echo "  No plugin DLL found"
+fi
+
+# Find plugin configuration
+echo "Looking for plugin configuration..."
+PLUGIN_CONFIG=$(docker_exec find "$CONFIG_DIR" -name "*$PLUGIN_GUID*" -o -name "*xtream*" 2>/dev/null | head -1 || echo "")
+if [ -n "$PLUGIN_CONFIG" ]; then
+    echo "  Found: $PLUGIN_CONFIG"
+else
+    echo "  No plugin config found"
+fi
+
+# Find plugin cache
+echo "Looking for plugin cache..."
+PLUGIN_CACHE=$(docker_exec find "$CACHE_DIR" -name "*$PLUGIN_GUID*" -o -name "*xtream*" 2>/dev/null | head -1 || echo "")
+if [ -n "$PLUGIN_CACHE" ]; then
+    echo "  Found: $PLUGIN_CACHE"
+else
+    echo "  No plugin cache found"
+fi
+
+echo ""
+read -p "⚠️  This will remove the plugin, its configuration, and cache. Continue? (y/N) " -n 1 -r
+echo ""
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Cancelled"
+    exit 1
+fi
+
+echo ""
+echo "🗑️  Removing plugin files..."
+
+# Remove plugin DLL
+if [ -n "$PLUGIN_DLL" ]; then
+    echo "  Removing: $PLUGIN_DLL"
+    docker_exec rm -f "$PLUGIN_DLL" || echo "    ⚠️  Could not remove DLL"
+fi
+
+# Remove all Xtream-related plugin directories (Jellyfin uses versioned folders)
+echo "  Removing all Xtream plugin directories..."
+docker_exec find "$PLUGINS_DIR" -type d -name "*Xtream*" -exec rm -rf {} + 2>/dev/null || true
+docker_exec find "$PLUGINS_DIR" -name "*Xtream*.dll" -delete 2>/dev/null || true
+
+# Remove plugin configuration
+if [ -n "$PLUGIN_CONFIG" ]; then
+    echo "  Removing: $PLUGIN_CONFIG"
+    docker_exec rm -f "$PLUGIN_CONFIG" || echo "    ⚠️  Could not remove config"
+fi
+
+# Remove all Xtream config files
+echo "  Removing all Xtream config files..."
+docker_exec find "$CONFIG_DIR" -name "*$PLUGIN_GUID*" -delete 2>/dev/null || true
+docker_exec find "$CONFIG_DIR" -iname "*xtream*" -delete 2>/dev/null || true
+docker_exec find "$CONFIG_DIR" -name "Jellyfin.Xtream.xml" -delete 2>/dev/null || true
+
+# Remove plugin cache
+if [ -n "$PLUGIN_CACHE" ]; then
+    echo "  Removing: $PLUGIN_CACHE"
+    docker_exec rm -rf "$PLUGIN_CACHE" || echo "    ⚠️  Could not remove cache"
+fi
+
+# Remove all Xtream cache files
+echo "  Removing all Xtream cache files..."
+docker_exec find "$CACHE_DIR" -name "*$PLUGIN_GUID*" -delete 2>/dev/null || true
+docker_exec find "$CACHE_DIR" -iname "*xtream*" -delete 2>/dev/null || true
+
+# Also check plugins/plugins directory (some Jellyfin versions use this)
+echo "  Checking plugins/plugins directory..."
+docker_exec find "$PLUGINS_DIR/plugins" -name "*Xtream*" -delete 2>/dev/null || true
+
+# Remove from plugin manifest if it exists
+echo "  Removing from plugin manifest..."
+docker_exec sh -c "sed -i '/$PLUGIN_GUID/d' $CONFIG_DIR/plugins/plugins.json 2>/dev/null || true" || true
+
+echo ""
+echo "🔄 Restarting Jellyfin container..."
+sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no root@$JELLYFIN_HOST "docker restart $CONTAINER_NAME" || echo "    ⚠️  Could not restart container (you may need to restart manually)"
+
+echo ""
+echo "✅ Plugin removal complete!"
+echo ""
+echo "📝 Next steps:"
+echo "  1. Wait for Jellyfin to restart (check: docker logs $CONTAINER_NAME)"
+echo "  2. Go to Jellyfin web UI → Plugins"
+echo "  3. Verify the plugin is no longer listed"
+echo "  4. If you see it, uninstall it from the UI first, then run this script again"
+echo ""

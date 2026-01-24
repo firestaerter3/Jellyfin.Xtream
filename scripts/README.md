@@ -37,6 +37,54 @@ chmod +x .git/hooks/pre-commit
 
 ---
 
+## remove-plugin-from-jellyfin.sh
+
+Script to completely remove the Jellyfin.Xtream plugin from a Jellyfin Docker container.
+
+### Setup
+
+**⚠️ IMPORTANT: This script contains private information (IP addresses, passwords) and is NOT tracked in git.**
+
+1. Copy the example file:
+   ```bash
+   cp scripts/remove-plugin-from-jellyfin.sh.example scripts/remove-plugin-from-jellyfin.sh
+   ```
+
+2. Edit the script and configure:
+   - `JELLYFIN_HOST`: Your Jellyfin server IP/hostname
+   - `SSH_PASSWORD`: Your SSH password (or use SSH keys instead)
+
+3. Make it executable:
+   ```bash
+   chmod +x scripts/remove-plugin-from-jellyfin.sh
+   ```
+
+### Usage
+
+```bash
+# With default container name (jellyfin) and configured host
+./scripts/remove-plugin-from-jellyfin.sh
+
+# With custom container name
+./scripts/remove-plugin-from-jellyfin.sh my-jellyfin-container
+
+# With custom container name and host
+./scripts/remove-plugin-from-jellyfin.sh my-jellyfin-container 192.168.1.100
+```
+
+### What It Does
+
+- Finds and removes plugin DLL files
+- Removes plugin configuration files
+- Removes plugin cache files
+- Restarts the Jellyfin container
+
+### Security Note
+
+The actual script (`remove-plugin-from-jellyfin.sh`) is in `.gitignore` to prevent committing private information. Only the example template (`remove-plugin-from-jellyfin.sh.example`) is tracked in git.
+
+---
+
 ## Makefile Targets
 
 See root `Makefile` for available targets:

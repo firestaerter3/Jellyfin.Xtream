@@ -7,3 +7,6 @@ artifacts
 
 # Claude local context (private notes, not for public repo)
 CLAUDE.local.md
+
+# Scripts with private information (IPs, passwords, etc.)
+scripts/remove-plugin-from-jellyfin.sh
