@@ -175,10 +175,11 @@ const populateCategoriesTable = (table, loadConfig, loadCategories, loadItems) =
     });
 }
 
-const fetchJson = (url) => ApiClient.fetch({
+const fetchJson = (url, options = {}) => ApiClient.fetch({
   dataType: 'json',
-  type: 'GET',
+  type: options.method || 'GET',
   url: ApiClient.getUrl(url),
+  ...options,
 });
 
 const filter = (obj, predicate) => Object.keys(obj)

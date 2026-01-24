@@ -221,4 +221,16 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
             IsCachePopulated = Plugin.Instance.SeriesCacheService.IsCachePopulated()
         });
     }
+
+    /// <summary>
+    /// Clear all cached series data and force a fresh fetch.
+    /// </summary>
+    /// <returns>Success response.</returns>
+    [Authorize(Policy = "RequiresElevation")]
+    [HttpPost("ClearSeriesCache")]
+    public ActionResult ClearSeriesCache()
+    {
+        Plugin.Instance.SeriesCacheService.ClearAllCache();
+        return Ok(new { Message = "Cache cleared successfully. Cache will be rebuilt on next refresh." });
+    }
 }

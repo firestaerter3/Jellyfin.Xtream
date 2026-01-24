@@ -14,6 +14,7 @@ export default function (view) {
     const cacheStatusContainer = view.querySelector("#CacheStatusContainer");
     const cacheProgressFill = view.querySelector("#CacheProgressFill");
     const cacheStatusText = view.querySelector("#CacheStatusText");
+    const clearCacheButton = view.querySelector("#ClearCacheButton");
 
     getConfig.then((config) => {
       visible.checked = config.IsSeriesVisible;
@@ -56,6 +57,35 @@ export default function (view) {
         clearInterval(statusPollInterval);
       }
     });
+
+    // Clear cache button handler
+    if (clearCacheButton) {
+      clearCacheButton.addEventListener('click', () => {
+        if (!confirm('Are you sure you want to clear all cached series data? This will force a fresh fetch from the Xtream API.')) {
+          return;
+        }
+
+        clearCacheButton.disabled = true;
+        clearCacheButton.querySelector('span').textContent = 'Clearing...';
+
+        Xtream.fetchJson('Xtream/ClearSeriesCache', {
+          type: 'POST'
+        })
+          .then((response) => {
+            Dashboard.alert('Cache cleared successfully! Series data will be refetched on next access.');
+            clearCacheButton.disabled = false;
+            clearCacheButton.querySelector('span').textContent = 'Clear All Cache';
+            // Update cache status immediately
+            updateCacheStatus();
+          })
+          .catch((error) => {
+            console.error('Failed to clear cache:', error);
+            Dashboard.alert('Failed to clear cache. Please try again or check the server logs.');
+            clearCacheButton.disabled = false;
+            clearCacheButton.querySelector('span').textContent = 'Clear All Cache';
+          });
+      });
+    }
     const table = view.querySelector('#SeriesContent');
     Xtream.populateCategoriesTable(
       table,

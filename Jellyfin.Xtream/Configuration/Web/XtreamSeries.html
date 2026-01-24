@@ -31,6 +31,14 @@
             Current cache refresh progress. You can also view this in Dashboard → Scheduled Tasks → "Refresh Xtream Series Cache".
           </div>
         </div>
+        <div class="inputContainer" style="margin-top: 1em;">
+          <button is="emby-button" type="button" id="ClearCacheButton" class="raised button-submit emby-button" style="background-color: #d32f2f;">
+            <span>Clear All Cache</span>
+          </button>
+          <div class="fieldDescription" style="margin-top: 0.5em;">
+            Clears all cached series data. This will force a fresh fetch from the Xtream API on next access. Use this if you're seeing stale data or incorrect titles.
+          </div>
+        </div>
         <div class="sectionTitleContainer flex align-items-center">
           <h2 class="sectionTitle">Series selection</h2>
         </div>
