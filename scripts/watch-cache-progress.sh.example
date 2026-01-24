@@ -1,0 +1,17 @@
+#!/bin/bash
+# Watch cache refresh progress in real-time
+# Usage: ./scripts/watch-cache-progress.sh [JELLYFIN_HOST] [SSH_PASSWORD]
+#
+# Environment variables:
+#   JELLYFIN_HOST: Jellyfin server hostname/IP (default: localhost)
+#   SSH_PASSWORD: SSH password (or use SSH keys instead)
+
+JELLYFIN_HOST="${1:-${JELLYFIN_HOST:-localhost}}"
+SSH_PASSWORD="${2:-${SSH_PASSWORD}}"
+
+if [ -z "$SSH_PASSWORD" ]; then
+    echo "⚠️  SSH_PASSWORD not set. Using SSH keys (recommended) or set SSH_PASSWORD environment variable."
+    ssh -o StrictHostKeyChecking=no root@$JELLYFIN_HOST "docker logs jellyfin -f 2>&1" | grep --line-buffered -i "SeriesCacheService\|cache refresh\|Processing category\|Processing series\|Cache refresh completed\|Failed to cache"
+else
+    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no root@$JELLYFIN_HOST "docker logs jellyfin -f 2>&1" | grep --line-buffered -i "SeriesCacheService\|cache refresh\|Processing category\|Processing series\|Cache refresh completed\|Failed to cache"
+fi

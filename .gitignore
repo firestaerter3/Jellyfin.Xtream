@@ -10,3 +10,4 @@ CLAUDE.local.md
 
 # Scripts with private information (IPs, passwords, etc.)
 scripts/remove-plugin-from-jellyfin.sh
+scripts/watch-cache-progress.sh
