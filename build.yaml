@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.3.1"
+version: "0.9.3.2"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,7 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  - FIXED: Episodes not loading from cache on first visit - Fixed IMemoryCache type mismatch (List vs IEnumerable)
   - FIXED: Categories not showing in Series configuration page - Improved error handling and JSON parsing
   - FIXED: Build errors - Added missing GetDefaultTriggers() method to SeriesCacheRefreshTask
   - IMPROVED: Better error messages when categories fail to load (shows helpful troubleshooting steps)
