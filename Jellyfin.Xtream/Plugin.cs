@@ -156,6 +156,16 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             client.UpdateUserAgent();
         }
 
+        // Update scheduled task interval to match plugin configuration
+        if (configuration is PluginConfiguration pluginConfig)
+        {
+            int refreshMinutes = pluginConfig.SeriesCacheExpirationMinutes;
+            if (refreshMinutes >= 10)
+            {
+                TaskService.UpdateCacheRefreshInterval(refreshMinutes);
+            }
+        }
+
         // Refresh series cache in background when configuration changes
         _ = Task.Run(async () =>
         {

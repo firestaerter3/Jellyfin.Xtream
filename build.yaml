@@ -13,9 +13,8 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
-  - IMPROVED: Plugin refresh frequency setting now directly controls scheduled task behavior
-  - Scheduled task checks every 10 minutes but only refreshes when configured interval has passed
-  - No need to manually sync plugin settings with Scheduled Tasks anymore
+  - IMPROVED: Plugin refresh frequency setting directly updates the scheduled task interval
+  - Change frequency in plugin settings OR Scheduled Tasks - both control the same thing
   - NEW: Cache maintenance buttons - "Refresh Now" and "Clear Cache" in Series configuration page
   - NEW: Configurable refresh frequency in plugin settings
   - CHANGED: Cache never expires automatically - data persists until refreshed or cleared
