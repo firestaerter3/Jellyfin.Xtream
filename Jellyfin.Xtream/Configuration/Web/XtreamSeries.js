@@ -37,6 +37,12 @@ export default function (view) {
 
     // Refresh Now button handler
     refreshCacheBtn.addEventListener('click', () => {
+      // Check if already refreshing
+      if (refreshCacheBtn.disabled) {
+        Dashboard.alert('Cache refresh is already in progress. Please wait for it to complete.');
+        return;
+      }
+
       refreshCacheBtn.disabled = true;
       refreshCacheBtn.querySelector('span').textContent = 'Starting...';
 
@@ -71,6 +77,12 @@ export default function (view) {
 
     // Clear Cache button handler
     clearCacheBtn.addEventListener('click', () => {
+      // Check if currently refreshing
+      if (clearCacheBtn.disabled) {
+        Dashboard.alert('Cache refresh is currently in progress. Please wait for it to complete before clearing the cache.');
+        return;
+      }
+
       if (!confirm('Are you sure you want to clear the cache? Next refresh will fetch all data from scratch.')) {
         return;
       }
