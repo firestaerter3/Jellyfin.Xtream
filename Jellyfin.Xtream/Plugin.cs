@@ -95,6 +95,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public string DataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetHashCode();
 
     /// <summary>
+    /// Gets the cache-specific data version that only changes when cache-relevant settings change.
+    /// This excludes settings like refresh frequency that don't affect cached data.
+    /// </summary>
+    public string CacheDataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetCacheRelevantHash();
+
+    /// <summary>
     /// Gets the current plugin instance.
     /// </summary>
     public static Plugin Instance => _instance ?? throw new InvalidOperationException("Plugin instance not available");

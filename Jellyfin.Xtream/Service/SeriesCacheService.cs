@@ -55,8 +55,10 @@ public class SeriesCacheService : IDisposable
 
     /// <summary>
     /// Gets the current cache key prefix.
+    /// Uses CacheDataVersion which only changes when cache-relevant settings change
+    /// (not when refresh frequency changes).
     /// </summary>
-    private string CachePrefix => $"series_cache_{Plugin.Instance.DataVersion}_v{_cacheVersion}_";
+    private string CachePrefix => $"series_cache_{Plugin.Instance.CacheDataVersion}_v{_cacheVersion}_";
 
     /// <summary>
     /// Pre-fetches and caches all series data (categories, series, seasons, episodes).
@@ -87,17 +89,21 @@ public class SeriesCacheService : IDisposable
             _lastRefreshStart = DateTime.UtcNow;
             _logger?.LogInformation("Starting series data cache refresh");
 
-            string dataVersion = Plugin.Instance.DataVersion;
-            string cachePrefix = $"series_cache_{dataVersion}_v{_cacheVersion}_";
+            string cacheDataVersion = Plugin.Instance.CacheDataVersion;
+            string cachePrefix = $"series_cache_{cacheDataVersion}_v{_cacheVersion}_";
 
             // Clear old cache entries
-            ClearCache(dataVersion);
+            ClearCache(cacheDataVersion);
 
             try
             {
-                // Cache entries never expire - they persist until refreshed or Jellyfin restarts
-                // Refresh frequency is controlled by the scheduled task (default: every 60 minutes)
-                MemoryCacheEntryOptions cacheOptions = new();
+                // Cache entries have a 24-hour safety expiration to prevent memory leaks
+                // from orphaned entries (e.g., when cache version changes).
+                // Normal refresh frequency is controlled by the scheduled task (default: every 60 minutes)
+                MemoryCacheEntryOptions cacheOptions = new()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                };
 
                 // Fetch all categories
                 _currentStatus = "Fetching categories...";

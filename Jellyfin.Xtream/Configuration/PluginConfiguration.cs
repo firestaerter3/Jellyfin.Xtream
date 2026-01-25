@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Collections.Generic;
 using MediaBrowser.Model.Plugins;
 
@@ -101,5 +102,31 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the channel override configuration for Live TV.
     /// </summary>
     public SerializableDictionary<int, ChannelOverrides> LiveTvOverrides { get; set; } = [];
+
+    /// <summary>
+    /// Gets a hash code based only on cache-relevant configuration.
+    /// This excludes settings like refresh frequency that don't affect cached data.
+    /// </summary>
+    /// <returns>Hash code for cache invalidation purposes.</returns>
+    public int GetCacheRelevantHash()
+    {
+        // Only include settings that affect what data is cached:
+        // - Credentials (determines which server/account)
+        // - Series selections (determines which series to cache)
+        // - FlattenSeriesView (affects data structure)
+        int hash = HashCode.Combine(BaseUrl, Username, Password, FlattenSeriesView);
+
+        // Include series selections
+        foreach (var kvp in Series)
+        {
+            hash = HashCode.Combine(hash, kvp.Key);
+            foreach (var val in kvp.Value)
+            {
+                hash = HashCode.Combine(hash, val);
+            }
+        }
+
+        return hash;
+    }
 }
 #pragma warning restore CA2227
