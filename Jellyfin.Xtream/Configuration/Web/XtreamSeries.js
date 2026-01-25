@@ -31,7 +31,7 @@ export default function (view) {
       visible.checked = config.IsSeriesVisible;
       flattenSeriesView.checked = config.FlattenSeriesView || false;
       enableCaching.checked = config.EnableSeriesCaching !== false; // Default to true for backwards compatibility
-      cacheRefreshMinutes.value = config.SeriesCacheExpirationMinutes || 60;
+      cacheRefreshMinutes.value = config.SeriesCacheExpirationMinutes || 600;
       updateCacheOptionsVisibility();
     });
 
@@ -179,7 +179,13 @@ export default function (view) {
           config.IsSeriesVisible = visible.checked;
           config.FlattenSeriesView = flattenSeriesView.checked;
           config.EnableSeriesCaching = enableCaching.checked;
-          config.SeriesCacheExpirationMinutes = parseInt(cacheRefreshMinutes.value, 10) || 60;
+
+          // Validate refresh frequency (min: 10, max: 1380 to prevent exceeding 24h cache expiration)
+          let refreshMinutes = parseInt(cacheRefreshMinutes.value, 10) || 600;
+          if (refreshMinutes < 10) refreshMinutes = 10;
+          if (refreshMinutes > 1380) refreshMinutes = 1380;
+          config.SeriesCacheExpirationMinutes = refreshMinutes;
+
           config.Series = data;
           ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
             Dashboard.processPluginConfigurationUpdateResult(result);

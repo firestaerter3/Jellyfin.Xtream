@@ -33,9 +33,9 @@
         <div id="CacheOptionsContainer" style="display: none;">
           <div class="inputContainer">
             <label class="inputLabel" for="SeriesCacheRefreshMinutes">Refresh Frequency (minutes)</label>
-            <input is="emby-input" type="number" id="SeriesCacheRefreshMinutes" name="SeriesCacheRefreshMinutes" min="10" max="1440" />
+            <input is="emby-input" type="number" id="SeriesCacheRefreshMinutes" name="SeriesCacheRefreshMinutes" min="10" max="1380" />
             <div class="fieldDescription">
-              How often to automatically refresh the cache (default: 60 minutes, minimum: 10). This setting syncs with Dashboard → Scheduled Tasks.
+              How often to automatically refresh the cache (default: 600 minutes / 10 hours, min: 10, max: 1380 / 23 hours). Maximum is 23 hours to ensure refresh happens before 24-hour cache expiration. This setting syncs with Dashboard → Scheduled Tasks.
             </div>
           </div>
           <div class="inputContainer" style="display: flex; gap: 10px; margin-bottom: 1em;">
