@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.4.6"
+version: "0.9.4.7"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,42 +13,10 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  v0.9.4.7 - Caching Toggle & Bug Fixes
   - NEW: Enable/disable caching toggle - Cache UI only shown when caching is enabled for cleaner interface
   - FIXED: Plugin preventing Jellyfin from starting when credentials not configured
   - FIXED: Refresh button not starting cache refresh - Background task was cancelled when HTTP request completed
   - FIXED: Clear Cache button showing 'Clearing' forever - Improved error handling in button handlers
-  - FIXED: Episodes not showing after changing refresh frequency - Cache now only invalidates when relevant settings change (credentials, categories)
+  - FIXED: Episodes not showing after changing refresh frequency - Cache now only invalidates when relevant settings change
   - FIXED: Memory leak from orphaned cache entries - Added 24-hour safety expiration
-  - IMPROVED: Plugin refresh frequency setting directly updates the scheduled task interval
-  - Change frequency in plugin settings OR Scheduled Tasks - both control the same thing
-  - NEW: Cache maintenance buttons - "Refresh Now" and "Clear Cache" in Series configuration page
-  - NEW: Configurable refresh frequency in plugin settings
-  - CHANGED: Cache never expires automatically - data persists until refreshed or cleared
-  - FIXED: Episodes not loading from cache on first visit - Fixed IMemoryCache type mismatch (List vs IEnumerable)
-  - FIXED: Categories not showing in Series configuration page - Improved error handling and JSON parsing
-  - FIXED: Build errors - Added missing GetDefaultTriggers() method to SeriesCacheRefreshTask
-  - IMPROVED: Better error messages when categories fail to load (shows helpful troubleshooting steps)
-  - NEW: Graphical progress indicator for cache refresh!
-  - Progress bar and status shown in Series configuration page (updates every 2 seconds)
-  - Scheduled task "Refresh Xtream Series Cache" appears in Dashboard → Scheduled Tasks
-  - Task shows progress percentage, status message, and can be triggered manually
-  - API endpoint /Xtream/SeriesCacheStatus provides programmatic access to cache status
-  - NEW: Detailed progress logging for cache refresh - See real-time progress in logs!
-  - Progress logs show: categories processed, series count, seasons, episodes, and running totals
-  - View progress via Jellyfin logs or Docker: docker logs jellyfin -f | grep cache
-  - NEW: Pre-fetch and cache all series data upfront - No more lazy loading delays!
-  - All series, seasons, and episodes are now cached when plugin loads or configuration changes
-  - Navigation is instant - data loads from cache instead of making API calls on every page visit
-  - Cache automatically refreshes when plugin configuration changes
-  - NEW: Configurable cache expiration time (default: 60 minutes / 1 hour)
-  - Users can adjust cache expiration in Series configuration page (1-1440 minutes)
-  - Lower values = fresher data but more API calls, Higher values = fewer calls but potentially stale data
-  - FIXED: Missing episodes in some series - Added fallback to search all episodes by Season property when dictionary lookup fails
-  - This handles cases where episodes might be stored under different season ID keys in the API response
-  - Fixed tag parsing for Unicode pipe characters (┃NL┃ tags now stripped from titles)
-  - Fixed episodes not showing: Added explicit check for non-empty episodes collection
-  - Fixed episodes not showing: Simplified GetEpisodes to use TryGetValue pattern correctly
-  - Fixed missing episodes in series: Added configuration check and safe season lookup in GetEpisodes
-  - Added flat VOD view feature: Show all movies directly without category folders
-  - Added flat series view feature: Show all series directly without category folders
-  - Both features are backward compatible and opt-in via configuration
