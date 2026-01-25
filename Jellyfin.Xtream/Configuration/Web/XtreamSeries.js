@@ -90,11 +90,18 @@ export default function (view) {
           }
 
           clearCache();
+        })
+        .catch((err) => {
+          console.error('Failed to check cache status:', err);
+          // If status check fails, still allow clearing with default message
+          if (confirm('Are you sure you want to clear the cache? Next refresh will fetch all data from scratch.')) {
+            clearCache();
+          }
         });
     });
 
     function clearCache() {
-
+      console.log('clearCache() called');
       clearCacheBtn.disabled = true;
       clearCacheBtn.querySelector('span').textContent = 'Clearing...';
 
@@ -103,14 +110,16 @@ export default function (view) {
         headers: ApiClient.defaultRequestHeaders()
       })
         .then(response => {
+          console.log('Clear cache response status:', response.status);
           if (!response.ok) {
             throw new Error('Server returned ' + response.status);
           }
           return response.json();
         })
         .then(result => {
+          console.log('Clear cache result:', result);
           if (result.Success) {
-            Dashboard.alert('Cache cleared successfully');
+            Dashboard.alert(result.Message || 'Cache cleared successfully');
             cacheStatusText.textContent = 'Cache cleared';
             cacheStatusText.style.color = '#a0a0a0';
             cacheProgressFill.style.width = '0%';
@@ -123,6 +132,7 @@ export default function (view) {
           Dashboard.alert('Failed to clear cache: ' + err.message);
         })
         .finally(() => {
+          console.log('clearCache() finally block - re-enabling button');
           clearCacheBtn.disabled = false;
           clearCacheBtn.querySelector('span').textContent = 'Clear Cache';
         });
