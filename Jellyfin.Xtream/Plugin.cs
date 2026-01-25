@@ -65,17 +65,27 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         SeriesCacheService = new Service.SeriesCacheService(StreamService, memoryCache, loggerFactory.CreateLogger<Service.SeriesCacheService>());
 
         // Start cache refresh in background (don't await - let it run async)
-        _ = Task.Run(async () =>
+        // Only refresh if credentials are configured
+        if (!string.IsNullOrEmpty(Configuration.BaseUrl) &&
+            Configuration.BaseUrl != "https://example.com" &&
+            !string.IsNullOrEmpty(Configuration.Username))
         {
-            try
+            _ = Task.Run(async () =>
             {
-                await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to initialize series cache");
-            }
-        });
+                try
+                {
+                    await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to initialize series cache");
+                }
+            });
+        }
+        else
+        {
+            _logger.LogInformation("Skipping initial cache refresh - credentials not configured");
+        }
     }
 
     /// <inheritdoc />
@@ -173,17 +183,23 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         }
 
         // Refresh series cache in background when configuration changes
-        _ = Task.Run(async () =>
+        // Only refresh if credentials are configured
+        if (!string.IsNullOrEmpty(Configuration.BaseUrl) &&
+            Configuration.BaseUrl != "https://example.com" &&
+            !string.IsNullOrEmpty(Configuration.Username))
         {
-            try
+            _ = Task.Run(async () =>
             {
-                await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh series cache after configuration update");
-            }
-        });
+                try
+                {
+                    await SeriesCacheService.RefreshCacheAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to refresh series cache after configuration update");
+                }
+            });
+        }
 
         // Force a refresh of TV guide on configuration update.
         // - This will update the TV channels.
