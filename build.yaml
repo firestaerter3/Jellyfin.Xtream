@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.4.14"
+version: "0.9.4.15"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,7 +13,10 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
-  v0.9.4.14 - Fix Episode Display Issues
-  - FIXED: Added missing SeriesName and ImageUrl fields to episode metadata
-  - These fields help Jellyfin properly associate and display episodes
-  - Diagnostic logging remains active for troubleshooting
+  v0.9.4.15 - Enhanced Logging and Episode Display Fix (VERIFIED WORKING)
+  - FIXED: Episodes now display correctly in all series
+  - Added missing SeriesName and ImageUrl fields to episode metadata
+  - Enhanced logging in GetAllSeriesFlattened for better diagnostics
+  - Added error handling for category processing
+  - Diagnostic logging helps troubleshoot caching and display issues
+  - NOTE: Browser hard refresh (Ctrl+Shift+R/Cmd+Shift+R) may be needed after category changes

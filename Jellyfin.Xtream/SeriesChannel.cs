@@ -259,22 +259,33 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetAllSeriesFlattened(CancellationToken cancellationToken)
     {
+        logger.LogInformation("GetAllSeriesFlattened called");
         // Try cache first for categories
         IEnumerable<Category>? cachedCategories = Plugin.Instance.SeriesCacheService.GetCachedCategories();
         IEnumerable<Category> categories = cachedCategories ?? await Plugin.Instance.StreamService.GetSeriesCategories(cancellationToken).ConfigureAwait(false);
 
+        logger.LogInformation("GetAllSeriesFlattened found {Count} categories", categories.Count());
         List<ChannelItemInfo> items = new();
 
         // Get all series from all selected categories
         foreach (Category category in categories)
         {
-            IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
-            items.AddRange(series.Select(CreateChannelItemInfo));
+            try
+            {
+                IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
+                logger.LogInformation("GetAllSeriesFlattened got {Count} series from category {CategoryId}", series.Count(), category.CategoryId);
+                items.AddRange(series.Select(CreateChannelItemInfo));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to get series for category {CategoryId}", category.CategoryId);
+            }
         }
 
         // Sort alphabetically for consistent display
         items = items.OrderBy(item => item.Name).ToList();
 
+        logger.LogInformation("GetAllSeriesFlattened returning {Count} series total", items.Count);
         return new()
         {
             Items = items,
