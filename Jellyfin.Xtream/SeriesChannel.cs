@@ -89,6 +89,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
     /// <inheritdoc />
     public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
+        logger.LogInformation("GetChannelItems called - FolderId: {FolderId}", query.FolderId ?? "(root)");
         try
         {
             if (string.IsNullOrEmpty(query.FolderId))
@@ -292,6 +293,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetSeasons(int seriesId, CancellationToken cancellationToken)
     {
+        logger.LogInformation("GetSeasons called - seriesId: {SeriesId}", seriesId);
         // Try cache first
         SeriesStreamInfo? cachedSeriesInfo = Plugin.Instance.SeriesCacheService.GetCachedSeriesInfo(seriesId);
 
@@ -318,6 +320,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
 
     private async Task<ChannelItemResult> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
     {
+        logger.LogInformation("GetEpisodes called - seriesId: {SeriesId}, seasonId: {SeasonId}", seriesId, seasonId);
         // Try cache first
         IEnumerable<Episode>? cachedEpisodes = Plugin.Instance.SeriesCacheService.GetCachedEpisodes(seriesId, seasonId);
         Season? cachedSeason = Plugin.Instance.SeriesCacheService.GetCachedSeason(seriesId, seasonId);
@@ -338,6 +341,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
                 episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));
         }
 
+        logger.LogInformation("GetEpisodes returning {Count} episodes for seriesId: {SeriesId}, seasonId: {SeasonId}", items.Count, seriesId, seasonId);
         return new()
         {
             Items = items,
