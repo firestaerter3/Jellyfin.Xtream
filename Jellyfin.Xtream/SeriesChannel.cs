@@ -226,6 +226,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
             DateCreated = episode.Added,
             Genres = GetGenres(serie.Genre),
             Id = StreamService.ToGuid(StreamService.EpisodePrefix, 0, 0, episode.EpisodeId).ToString(),
+            ImageUrl = cover,
             IndexNumber = episode.EpisodeNum,
             IsLiveStream = false,
             MediaSources = sources,
@@ -235,6 +236,7 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
             ParentIndexNumber = episode.Season,
             People = GetPeople(serie.Cast),
             RunTimeTicks = episode.Info?.DurationSecs * TimeSpan.TicksPerSecond,
+            SeriesName = serie.Name,
             Tags = new(parsedName.Tags),
             Type = ChannelItemType.Media,
         };
