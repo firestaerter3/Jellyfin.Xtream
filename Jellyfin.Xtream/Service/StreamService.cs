@@ -340,6 +340,19 @@ public partial class StreamService(IXtreamClient xtreamClient, ILogger<StreamSer
     public async Task<IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>>> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
     {
         SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, seriesId, cancellationToken).ConfigureAwait(false);
+        return GetEpisodesFromSeriesInfo(series, seriesId, seasonId);
+    }
+
+    /// <summary>
+    /// Gets episodes from an already-fetched SeriesStreamInfo object without making an API call.
+    /// Use this when you already have the SeriesStreamInfo from a previous GetSeasons() call.
+    /// </summary>
+    /// <param name="series">The pre-fetched SeriesStreamInfo.</param>
+    /// <param name="seriesId">The Xtream id of the Series.</param>
+    /// <param name="seasonId">The Xtream id of the Season.</param>
+    /// <returns>List of episodes with series and season info.</returns>
+    public IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> GetEpisodesFromSeriesInfo(SeriesStreamInfo series, int seriesId, int seasonId)
+    {
         int categoryId = series.Info.CategoryId;
         if (!IsConfigured(Plugin.Instance.Configuration.Series, categoryId, seriesId))
         {
@@ -349,6 +362,7 @@ public partial class StreamService(IXtreamClient xtreamClient, ILogger<StreamSer
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
 
         List<Tuple<SeriesStreamInfo, Season?, Episode>> result = new();
+        HashSet<int> seenEpisodeIds = new();
 
         if (series.Episodes != null)
         {
@@ -357,7 +371,10 @@ public partial class StreamService(IXtreamClient xtreamClient, ILogger<StreamSer
             {
                 foreach (var episode in episodes)
                 {
-                    result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                    if (seenEpisodeIds.Add(episode.EpisodeId))
+                    {
+                        result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                    }
                 }
             }
 
@@ -373,8 +390,8 @@ public partial class StreamService(IXtreamClient xtreamClient, ILogger<StreamSer
                         // Match episodes by their Season property, not just the dictionary key
                         if (episode.Season == seasonId)
                         {
-                            // Avoid duplicates - check if episode already in result
-                            if (!result.Any(r => r.Item3.EpisodeId == episode.EpisodeId))
+                            // Avoid duplicates using HashSet for O(1) lookup
+                            if (seenEpisodeIds.Add(episode.EpisodeId))
                             {
                                 result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
                             }

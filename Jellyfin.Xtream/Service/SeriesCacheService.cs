@@ -147,125 +147,184 @@ public class SeriesCacheService : IDisposable
                 int seriesCount = 0;
                 int seasonCount = 0;
                 int episodeCount = 0;
-                int categoryIndex = 0;
-                int totalCategories = categoryList.Count;
-                int totalSeries = 0; // Will be calculated after fetching all series lists
+                int totalSeries = 0;
 
-                // First pass: count total series for progress calculation
+                // Single pass: fetch all series lists and cache them for reuse
+                // This eliminates the double API call that was happening before
+                Dictionary<int, List<Series>> seriesListsByCategory = new();
+                _currentStatus = "Fetching series lists...";
                 foreach (Category category in categoryList)
                 {
                     _refreshCancellationTokenSource.Token.ThrowIfCancellationRequested();
                     IEnumerable<Series> seriesList = await _streamService.GetSeries(category.CategoryId, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
-                    totalSeries += seriesList.Count();
+                    List<Series> seriesItems = seriesList.ToList();
+                    seriesListsByCategory[category.CategoryId] = seriesItems;
+                    totalSeries += seriesItems.Count;
                 }
 
-                // Second pass: fetch and cache all data
-                int processedSeries = 0;
-                foreach (Category category in categoryList)
+                _logger?.LogInformation("Fetched {TotalSeries} series across {CategoryCount} categories", totalSeries, categoryList.Count);
+
+                // Get parallelism configuration
+                int parallelism = Math.Max(1, Math.Min(10, Plugin.Instance?.Configuration.CacheRefreshParallelism ?? 3));
+                int minDelayMs = Math.Max(0, Math.Min(1000, Plugin.Instance?.Configuration.CacheRefreshMinDelayMs ?? 100));
+                _logger?.LogInformation("Starting parallel series processing with parallelism={Parallelism}, minDelayMs={MinDelayMs}", parallelism, minDelayMs);
+
+                // Throttle semaphore for rate limiting API requests
+                using SemaphoreSlim throttleSemaphore = new(1, 1);
+                DateTime lastRequestTime = DateTime.MinValue;
+
+                // Helper to throttle requests
+                async Task ThrottleRequestAsync()
                 {
-                    // Check for cancellation at the start of each category
-                    _refreshCancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-                    categoryIndex++;
-                    _logger?.LogInformation("Processing category {CategoryIndex}/{TotalCategories}: {CategoryName} (ID: {CategoryId})", categoryIndex, totalCategories, category.CategoryName, category.CategoryId);
-                    progress?.Report(0.1 + (((categoryIndex - 1) * 0.8) / totalCategories)); // 10% for categories, 80% for series processing
-
-                    IEnumerable<Series> seriesList = await _streamService.GetSeries(category.CategoryId, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
-                    List<Series> seriesListItems = seriesList.ToList();
-                    _logger?.LogInformation("  Found {SeriesCount} series in category {CategoryName}", seriesListItems.Count, category.CategoryName);
-
-                    // Cache the series list for this category
-                    _memoryCache.Set($"{cachePrefix}serieslist_{category.CategoryId}", seriesListItems, cacheOptions);
-
-                    int seriesInCategory = 0;
-                    foreach (Series series in seriesListItems)
+                    if (minDelayMs <= 0)
                     {
-                        // Check for cancellation every 10 series to be responsive
-                        if (processedSeries % 10 == 0)
+                        return;
+                    }
+
+                    await throttleSemaphore.WaitAsync(_refreshCancellationTokenSource.Token).ConfigureAwait(false);
+                    try
+                    {
+                        double elapsedMs = (DateTime.UtcNow - lastRequestTime).TotalMilliseconds;
+                        if (elapsedMs < minDelayMs)
                         {
-                            _refreshCancellationTokenSource.Token.ThrowIfCancellationRequested();
+                            await Task.Delay(minDelayMs - (int)elapsedMs, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
                         }
 
-                        seriesCount++;
-                        seriesInCategory++;
-                        processedSeries++;
+                        lastRequestTime = DateTime.UtcNow;
+                    }
+                    finally
+                    {
+                        throttleSemaphore.Release();
+                    }
+                }
 
-                        // Report progress and log every 10 series or at the start
+                // Flatten all series into a single list with category info for parallel processing
+                List<(Series Series, Category Category)> allSeries = new();
+                foreach (Category category in categoryList)
+                {
+                    List<Series> seriesListItems = seriesListsByCategory[category.CategoryId];
+                    _memoryCache.Set($"{cachePrefix}serieslist_{category.CategoryId}", seriesListItems, cacheOptions);
+                    foreach (Series series in seriesListItems)
+                    {
+                        allSeries.Add((series, category));
+                    }
+                }
+
+                // Thread-safe counters for progress tracking
+                int processedSeries = 0;
+
+                // Parallel processing options
+                ParallelOptions parallelOptions = new()
+                {
+                    MaxDegreeOfParallelism = parallelism,
+                    CancellationToken = _refreshCancellationTokenSource.Token
+                };
+
+                await Parallel.ForEachAsync(allSeries, parallelOptions, async (item, ct) =>
+                {
+                    Series series = item.Series;
+
+                    try
+                    {
+                        // Throttle to prevent rate limiting
+                        await ThrottleRequestAsync().ConfigureAwait(false);
+
+                        // Fetch seasons for this series (makes ONE API call to get SeriesStreamInfo)
+                        IEnumerable<Tuple<SeriesStreamInfo, int>> seasons = await _streamService.GetSeasons(series.SeriesId, ct).ConfigureAwait(false);
+                        List<Tuple<SeriesStreamInfo, int>> seasonList = seasons.ToList();
+
+                        // Reuse the SeriesStreamInfo from GetSeasons for all episodes
+                        // This eliminates redundant API calls (was calling GetSeriesStreamsBySeriesAsync once per season)
+                        SeriesStreamInfo? seriesStreamInfo = seasonList.FirstOrDefault()?.Item1;
+
+                        int localSeasonCount = 0;
+                        int localEpisodeCount = 0;
+
+                        foreach (var seasonTuple in seasonList)
+                        {
+                            int seasonId = seasonTuple.Item2;
+                            localSeasonCount++;
+
+                            // Get episodes from the already-fetched SeriesStreamInfo (no API call)
+                            IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> episodes = _streamService.GetEpisodesFromSeriesInfo(seriesStreamInfo!, series.SeriesId, seasonId);
+
+                            List<Episode> episodeList = episodes.Select(e => e.Item3).ToList();
+                            localEpisodeCount += episodeList.Count;
+
+                            // Cache episodes for this season
+                            _memoryCache.Set($"{cachePrefix}episodes_{series.SeriesId}_{seasonId}", episodeList, cacheOptions);
+
+                            // Cache season info
+                            Season? season = seriesStreamInfo?.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
+                            _memoryCache.Set($"{cachePrefix}season_{series.SeriesId}_{seasonId}", season, cacheOptions);
+                        }
+
+                        // Cache series stream info
+                        if (seriesStreamInfo != null)
+                        {
+                            _memoryCache.Set($"{cachePrefix}seriesinfo_{series.SeriesId}", seriesStreamInfo, cacheOptions);
+                        }
+
+                        // Update counters atomically
+                        int currentProcessed = Interlocked.Increment(ref processedSeries);
+                        Interlocked.Add(ref seriesCount, 1);
+                        Interlocked.Add(ref seasonCount, localSeasonCount);
+                        Interlocked.Add(ref episodeCount, localEpisodeCount);
+
+                        // Update progress (thread-safe since only read by UI)
                         if (totalSeries > 0)
                         {
-                            double progressValue = 0.1 + (processedSeries * 0.8 / totalSeries); // 10% for categories, 80% for series
+                            double progressValue = 0.1 + (currentProcessed * 0.8 / totalSeries);
                             _currentProgress = progressValue;
-                            _currentStatus = $"Processing series {processedSeries}/{totalSeries} ({seriesCount} series, {seasonCount} seasons, {episodeCount} episodes)";
+                            _currentStatus = $"Processing series {currentProcessed}/{totalSeries} ({seriesCount} series, {seasonCount} seasons, {episodeCount} episodes)";
                             progress?.Report(progressValue);
                         }
 
-                        if (seriesInCategory == 1 || seriesInCategory % 10 == 0)
+                        // Log progress every 50 series
+                        if (currentProcessed % 50 == 0)
                         {
-                            _logger?.LogInformation("  Processing series {SeriesInCategory}/{TotalInCategory}: {SeriesName} (ID: {SeriesId}) - Total progress: {TotalSeries} series, {TotalSeasons} seasons, {TotalEpisodes} episodes", seriesInCategory, seriesListItems.Count, series.Name, series.SeriesId, seriesCount, seasonCount, episodeCount);
-                        }
-
-                        try
-                        {
-                            // Fetch seasons for this series
-                            IEnumerable<Tuple<SeriesStreamInfo, int>> seasons = await _streamService.GetSeasons(series.SeriesId, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
-                            List<Tuple<SeriesStreamInfo, int>> seasonList = seasons.ToList();
-
-                            SeriesStreamInfo? seriesStreamInfo = null;
-                            foreach (var seasonTuple in seasonList)
-                            {
-                                if (seriesStreamInfo == null)
-                                {
-                                    seriesStreamInfo = seasonTuple.Item1;
-                                }
-
-                                int seasonId = seasonTuple.Item2;
-                                seasonCount++;
-
-                                // Fetch episodes for this season
-                                IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> episodes = await _streamService.GetEpisodes(series.SeriesId, seasonId, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
-
-                                List<Episode> episodeList = episodes.Select(e => e.Item3).ToList();
-                                episodeCount += episodeList.Count;
-
-                                // Cache episodes for this season
-                                _memoryCache.Set($"{cachePrefix}episodes_{series.SeriesId}_{seasonId}", episodeList, cacheOptions);
-
-                                // Cache season info
-                                Season? season = seriesStreamInfo.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
-                                _memoryCache.Set($"{cachePrefix}season_{series.SeriesId}_{seasonId}", season, cacheOptions);
-                            }
-
-                            // Cache series stream info
-                            if (seriesStreamInfo != null)
-                            {
-                                _memoryCache.Set($"{cachePrefix}seriesinfo_{series.SeriesId}", seriesStreamInfo, cacheOptions);
-                            }
-                        }
-                        catch (HttpRequestException ex) when (ex.StatusCode >= HttpStatusCode.InternalServerError)
-                        {
-                            // HTTP 5xx errors - already retried by RetryHandler if enabled
-                            _logger?.LogWarning(
-                                "Persistent HTTP {StatusCode} error for series {SeriesId} ({SeriesName}) after {MaxRetries} retries: {Message}",
-                                ex.StatusCode,
-                                series.SeriesId,
-                                series.Name,
-                                Plugin.Instance?.Configuration.HttpRetryMaxAttempts ?? 3,
-                                ex.Message);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogWarning(ex, "Failed to cache data for series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
+                            _logger?.LogInformation(
+                                "Progress: {Processed}/{Total} series ({Seasons} seasons, {Episodes} episodes)",
+                                currentProcessed,
+                                totalSeries,
+                                seasonCount,
+                                episodeCount);
                         }
                     }
+                    catch (HttpRequestException ex) when (ex.StatusCode >= HttpStatusCode.InternalServerError)
+                    {
+                        // HTTP 5xx errors - already retried by RetryHandler if enabled
+                        _logger?.LogWarning(
+                            "Persistent HTTP {StatusCode} error for series {SeriesId} ({SeriesName}) after {MaxRetries} retries: {Message}",
+                            ex.StatusCode,
+                            series.SeriesId,
+                            series.Name,
+                            Plugin.Instance?.Configuration.HttpRetryMaxAttempts ?? 3,
+                            ex.Message);
+                        Interlocked.Increment(ref processedSeries);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw; // Let cancellation propagate
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to cache data for series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
+                        Interlocked.Increment(ref processedSeries);
+                    }
+                }).ConfigureAwait(false);
 
-                    _logger?.LogInformation("Completed category {CategoryName}: {SeriesInCategory} series, running totals: {TotalSeries} series, {TotalSeasons} seasons, {TotalEpisodes} episodes", category.CategoryName, seriesInCategory, seriesCount, seasonCount, episodeCount);
-                }
+                _logger?.LogInformation(
+                    "Parallel processing completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes",
+                    seriesCount,
+                    seasonCount,
+                    episodeCount);
 
                 progress?.Report(1.0); // 100% complete
                 _currentProgress = 1.0;
                 _currentStatus = $"Completed: {seriesCount} series, {seasonCount} seasons, {episodeCount} episodes";
                 _lastRefreshComplete = DateTime.UtcNow;
-                _logger?.LogInformation("Cache refresh completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories", seriesCount, seasonCount, episodeCount, totalCategories);
+                _logger?.LogInformation("Cache refresh completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories", seriesCount, seasonCount, episodeCount, categoryList.Count);
 
                 // Log failure summary if failures occurred
                 var (failureCount, failedItems) = _failureTrackingService.GetFailureStats();

@@ -19,20 +19,40 @@ export default function (view) {
     const cacheStatusContainer = view.querySelector("#CacheStatusContainer");
     const cacheProgressFill = view.querySelector("#CacheProgressFill");
     const cacheStatusText = view.querySelector("#CacheStatusText");
+    const cacheParallelism = view.querySelector("#CacheRefreshParallelism");
+    const cacheParallelismValue = view.querySelector("#CacheParallelismValue");
+    const cacheMinDelay = view.querySelector("#CacheRefreshMinDelayMs");
+    const cacheMinDelayValue = view.querySelector("#CacheMinDelayValue");
 
     // Toggle cache options visibility
     function updateCacheOptionsVisibility() {
       cacheOptionsContainer.style.display = enableCaching.checked ? 'block' : 'none';
     }
 
+    // Update parallelism display value
+    function updateParallelismDisplay() {
+      cacheParallelismValue.textContent = cacheParallelism.value;
+    }
+
+    // Update min delay display value
+    function updateMinDelayDisplay() {
+      cacheMinDelayValue.textContent = cacheMinDelay.value;
+    }
+
     enableCaching.addEventListener('change', updateCacheOptionsVisibility);
+    cacheParallelism.addEventListener('input', updateParallelismDisplay);
+    cacheMinDelay.addEventListener('input', updateMinDelayDisplay);
 
     getConfig.then((config) => {
       visible.checked = config.IsSeriesVisible;
       flattenSeriesView.checked = config.FlattenSeriesView || false;
       enableCaching.checked = config.EnableSeriesCaching !== false; // Default to true for backwards compatibility
       cacheRefreshMinutes.value = config.SeriesCacheExpirationMinutes || 600;
+      cacheParallelism.value = config.CacheRefreshParallelism || 3;
+      cacheMinDelay.value = config.CacheRefreshMinDelayMs !== undefined ? config.CacheRefreshMinDelayMs : 100;
       updateCacheOptionsVisibility();
+      updateParallelismDisplay();
+      updateMinDelayDisplay();
     });
 
     // Refresh Now button handler
@@ -226,6 +246,18 @@ export default function (view) {
           if (refreshMinutes < 10) refreshMinutes = 10;
           if (refreshMinutes > 1380) refreshMinutes = 1380;
           config.SeriesCacheExpirationMinutes = refreshMinutes;
+
+          // Validate parallelism (1-10)
+          let parallelism = parseInt(cacheParallelism.value, 10) || 3;
+          if (parallelism < 1) parallelism = 1;
+          if (parallelism > 10) parallelism = 10;
+          config.CacheRefreshParallelism = parallelism;
+
+          // Validate min delay (0-1000)
+          let minDelay = parseInt(cacheMinDelay.value, 10) || 100;
+          if (minDelay < 0) minDelay = 0;
+          if (minDelay > 1000) minDelay = 1000;
+          config.CacheRefreshMinDelayMs = minDelay;
 
           config.Series = data;
           console.log('Saving series configuration:', JSON.stringify(data, null, 2));

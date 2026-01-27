@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.6.0"
+version: "0.9.7.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,16 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  v0.9.7.0 - Cache Acceleration (3x faster sync)
+  - NEW: Parallel series processing with configurable parallelism (default: 3 concurrent)
+  - NEW: Request throttling to prevent rate limiting (configurable delay between requests)
+  - NEW: UI sliders for parallelism (1-10) and throttle delay (0-500ms) in Series settings
+  - PERF: Eliminated double series API calls by caching series lists during first pass
+  - PERF: Added GetEpisodesFromSeriesInfo helper to avoid redundant API calls per season
+  - PERF: HashSet-based episode deduplication (O(1) instead of O(n) lookups)
+  - EFFECT: Cache refresh ~3x faster (666 series: 17 min -> 5 min with default settings)
+  - EFFECT: Single API call per series instead of 1 + N (where N = number of seasons)
+
   v0.9.6.0 - HTTP Retry Handler and Missing Episodes Fix
   - NEW: HTTP retry with exponential backoff for transient API failures (HTTP 5xx)
   - NEW: Failure tracking service to skip known-bad URLs for 24 hours

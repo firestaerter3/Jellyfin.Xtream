@@ -38,6 +38,20 @@
               How often to automatically refresh the cache (default: 600 minutes / 10 hours, min: 10, max: 1380 / 23 hours). Maximum is 23 hours to ensure refresh happens before 24-hour cache expiration. This setting syncs with Dashboard → Scheduled Tasks.
             </div>
           </div>
+          <div class="inputContainer">
+            <label class="inputLabel" for="CacheRefreshParallelism">Cache Refresh Parallelism: <span id="CacheParallelismValue">3</span></label>
+            <input type="range" id="CacheRefreshParallelism" name="CacheRefreshParallelism" min="1" max="10" value="3" style="width: 100%;" />
+            <div class="fieldDescription">
+              Number of concurrent API requests during cache refresh. Lower values (1-2) are safer for strict providers. Higher values (5-10) are faster but may trigger rate limiting. Default: 3 (recommended).
+            </div>
+          </div>
+          <div class="inputContainer">
+            <label class="inputLabel" for="CacheRefreshMinDelayMs">Request Throttle Delay (ms): <span id="CacheMinDelayValue">100</span></label>
+            <input type="range" id="CacheRefreshMinDelayMs" name="CacheRefreshMinDelayMs" min="0" max="500" step="25" value="100" style="width: 100%;" />
+            <div class="fieldDescription">
+              Minimum delay between API requests to avoid rate limiting. 0 = no throttling, 100 = ~10 req/sec, 500 = ~2 req/sec. Default: 100ms.
+            </div>
+          </div>
           <div class="inputContainer" style="display: flex; gap: 10px; margin-bottom: 1em;">
             <button is="emby-button" type="button" id="RefreshCacheBtn" class="raised emby-button">
               <span>Refresh Now</span>

@@ -123,6 +123,20 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool HttpRetryThrowOnPersistentFailure { get; set; } = false;
 
     /// <summary>
+    /// Gets or sets the number of concurrent series to process during cache refresh.
+    /// Higher values are faster but may trigger rate limiting on strict providers.
+    /// Default is 3 (conservative). Range: 1-10.
+    /// </summary>
+    public int CacheRefreshParallelism { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets the minimum delay in milliseconds between API requests during parallel cache refresh.
+    /// This throttles requests to avoid rate limiting. Default is 100ms (~10 requests/sec).
+    /// Range: 0-1000ms. Set to 0 to disable throttling.
+    /// </summary>
+    public int CacheRefreshMinDelayMs { get; set; } = 100;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];
