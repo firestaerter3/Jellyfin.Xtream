@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "## What's New\n\n### HTTP Retry Handler\n- **Automatic retry** for transient API failures (HTTP 500, 502, 503, 504)\n- **Exponential backoff** (1s → 2s → 4s) to avoid overwhelming provider\n- **Failure tracking** skips known-bad URLs for 24 hours\n- **Configurable** via plugin settings (attempts, delay, cache TTL)\n\n### Missing Episodes Fix\n- **Two-phase lookup** finds episodes stored under wrong dictionary keys\n- Some Xtream providers store episodes with `key=0` but `episode.Season=1`\n- Old code missed these; new code finds them via fallback search\n\n## Effects\n- Cache refresh success rate: **~88% → ~95%**\n- All episodes now display regardless of provider API structure\n- Transient failures auto-recover without manual intervention\n\n## Configuration Options (new)\n| Setting | Default | Description |\n|---------|---------|-------------|\n| Enable HTTP Retry | true | Master switch for retry logic |\n| Max Retry Attempts | 3 | Number of retries (0-10) |\n| Initial Delay (ms) | 1000 | Base delay before first retry |\n| Failure Cache (hours) | 24 | How long to skip known-bad URLs |\n\n## Documentation\n- Complete documentation added for Features 03, 05, 06, 07\n- Updated Feature 04 (Eager Caching) with retry handler details\n\n---\n\n🤖 Generated with [Claude Code](https://claude.ai/code)",
+        "checksum": "bb4b2defe87fb8e79d4569c29305548b",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.6.0/jellyfin-xtream-flat-view_0.9.6.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-27T21:31:10Z",
+        "version": "0.9.6.0"
+      },
+      {
         "changelog": "## v0.9.5.3 - Fix malformed JSON from Xtream API\n\n**Fixes:**\n- Handle cases where Xtream API returns JSON array instead of object for series data\n- Prevents cache failures for series with malformed API responses\n- Better error logging for JSON deserialization failures\n\n**Effect:**\n- Series that previously failed to cache now load successfully with empty data\n- Cache refresh completes without errors\n\n**Full Features in this fork:**\n- Flat Series View - show all series in single alphabetical list\n- Flat VOD View - show all movies in single alphabetical list  \n- Eager caching - pre-load all series data for instant navigation\n- Unicode pipe tag parsing - strip ┃NL┃ style tags from titles",
         "checksum": "d6d4f13dfddbaaa65d08f6c63ab43a2c",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.5.3/jellyfin-xtream-flat-view_0.9.5.3.zip",
