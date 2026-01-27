@@ -68,10 +68,41 @@ Users add this repository URL to Jellyfin's plugin repositories:
 https://rolandb5.github.io/Jellyfin.Xtream/repository.json
 ```
 
-## Documentation Files
+## Documentation Structure
 
+**Start Here:** `docs/INDEX.md` - Master documentation hub
+
+### Quick Links
 - **`CLAUDE.md`** (this file) - Quick reference for AI assistants
-- **`docs/PROJECT_CONTEXT.md`** - Comprehensive project context
-- **`docs/BUILD_ERRORS_PREVENTION.md`** - Guide to prevent build errors
-- **`docs/PR_PROPOSAL.md`** - Strategy for upstream contributions
-- **`docs/DEVELOPMENT_NOTES.md`** - Local development notes (gitignored)
+- **`docs/INDEX.md`** - Master documentation hub (start here)
+- **`docs/reference/PROJECT_CONTEXT.md`** - Comprehensive project context
+- **`docs/reference/BUILD_ERRORS_PREVENTION.md`** - Guide to prevent build errors
+- **`docs/upstream/PR_PROPOSAL.md`** - Strategy for upstream contributions
+- **`docs/upstream/PR_STATUS.md`** - Dashboard tracking PR readiness for all features
+- **`docs/upstream/PR_WORKFLOW.md`** - Step-by-step PR submission guide
+- **`docs/REORGANIZATION_SUMMARY.md`** - Documentation reorganization summary
+
+### Feature Documentation (7 features)
+Each feature has comprehensive documentation in `docs/features/<NN-feature-name>/`:
+- `REQUIREMENTS.md` - What and why (user stories, functional requirements)
+- `ARCHITECTURE.md` - How (design decisions, components, data flow)
+- `IMPLEMENTATION.md` - Code changes, technical details
+- `CONTEXT.md` - **AI assistant context** (gotchas, session handoff, critical code)
+- `TEST_PLAN.md` - Manual test cases, performance benchmarks
+- `TODO.md` - Outstanding tasks, future enhancements
+- `CHANGELOG.md` - Version history, breaking changes
+
+**Fully Documented:**
+- 01-flat-view (partial - REQUIREMENTS.md complete)
+- 04-eager-caching (complete - 8 documents) ⭐
+
+**Templates Available:** 02, 03, 05, 06, 07
+
+### Automation Scripts
+```bash
+# Generate new feature documentation scaffold
+./scripts/docs/generate-feature.sh <num> <name>
+
+# Validate all features have required docs
+./scripts/docs/validate-structure.sh
+```
