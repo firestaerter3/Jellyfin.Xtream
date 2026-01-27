@@ -140,18 +140,9 @@ export default function (view) {
 
     // Poll cache status every 2 seconds
     let statusPollInterval;
-    let lastCacheVersion = null;
     function updateCacheStatus() {
       Xtream.fetchJson('Xtream/SeriesCacheStatus')
         .then((status) => {
-          // Detect cache version change and reload page if version changed
-          if (lastCacheVersion !== null && status.CacheDataVersion && lastCacheVersion !== status.CacheDataVersion) {
-            console.log(`Cache version changed from ${lastCacheVersion} to ${status.CacheDataVersion}, reloading page to invalidate browser cache`);
-            window.location.reload();
-            return;
-          }
-          lastCacheVersion = status.CacheDataVersion;
-
           if (status.IsRefreshing || status.Progress > 0 || status.IsCachePopulated) {
             cacheStatusContainer.style.display = 'block';
             const progressPercent = Math.round(status.Progress * 100);

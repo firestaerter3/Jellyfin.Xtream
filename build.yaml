@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.5.0"
+version: "0.9.5.1"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,12 +13,8 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
-  v0.9.5.0 - EAGER LOADING: Auto-populate Jellyfin Database
-  - MAJOR FEATURE: Cache refresh now automatically triggers Jellyfin to populate its database
-  - TRUE EAGER LOADING: All series/seasons/episodes pre-loaded for instant browsing
-  - How it works: After fetching from Xtream API, automatically triggers Jellyfin channel refresh
-  - Result: Users see all content immediately, no waiting for API calls while browsing
-  - PERFORMANCE: Series lists now cached per category (from v0.9.4.16)
-  - ENHANCEMENT: Automatic browser cache invalidation when server cache changes
-  - FEATURE: Configuration validation warns if no series selected
-  - Updated documentation explaining the real value of plugin cache as staging buffer
+  v0.9.5.1 - Cleanup: Remove broken browser auto-reload feature
+  - REMOVED: Browser auto-reload on cache version change (was checking wrong version, never worked)
+  - REMOVED: CacheDataVersion from API response (only supported the broken feature)
+  - Simplifies codebase by removing non-functional code
+  - Eager loading (v0.9.5.0) still works: cache refresh auto-populates Jellyfin database
