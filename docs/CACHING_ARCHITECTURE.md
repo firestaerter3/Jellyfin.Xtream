@@ -658,6 +658,14 @@ logger.LogInformation("GetEpisodes returning {Count} episodes", items.Count);
 
 ---
 
+## Related Documents
+
+- **[EAGER_CACHING_REQUIREMENTS.md](./EAGER_CACHING_REQUIREMENTS.md)** - Formal requirements specification
+- **[EAGER_CACHING_TEST_CASES.md](./EAGER_CACHING_TEST_CASES.md)** - Test cases for validation
+- **[CACHE_INVALIDATION_CHALLENGE.md](./CACHE_INVALIDATION_CHALLENGE.md)** - Cache invalidation analysis
+
+---
+
 ## Summary
 
 The caching architecture involves **three layers working together for eager loading**:

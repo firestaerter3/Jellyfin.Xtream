@@ -7,3 +7,4 @@ artifacts
 
 # Claude local context (private notes, not for public repo)
 CLAUDE.local.md
+.DS_Store
