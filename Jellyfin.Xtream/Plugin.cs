@@ -23,6 +23,7 @@ using Jellyfin.Xtream.Configuration;
 using Jellyfin.Xtream.Service;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Controller.Channels;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Tasks;
@@ -48,6 +49,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
     /// <param name="memoryCache">Instance of the <see cref="IMemoryCache"/> interface.</param>
     /// <param name="failureTrackingService">Instance of the <see cref="FailureTrackingService"/> class.</param>
+    /// <param name="channelManager">Instance of the <see cref="IChannelManager"/> interface.</param>
     /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
     /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
     public Plugin(
@@ -57,12 +59,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         IXtreamClient xtreamClient,
         IMemoryCache memoryCache,
         FailureTrackingService failureTrackingService,
+        IChannelManager channelManager,
         ILogger<Plugin> logger,
         ILoggerFactory loggerFactory)
         : base(applicationPaths, xmlSerializer)
     {
         _instance = this;
         XtreamClient = xtreamClient;
+        ChannelManager = channelManager;
         if (XtreamClient is XtreamClient client)
         {
             client.UpdateUserAgent();
@@ -140,6 +144,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the task service instance.
     /// </summary>
     public TaskService TaskService { get; init; }
+
+    /// <summary>
+    /// Gets the channel manager instance for eager database population.
+    /// </summary>
+    public IChannelManager ChannelManager { get; init; }
 
     /// <summary>
     /// Gets the series cache service instance.

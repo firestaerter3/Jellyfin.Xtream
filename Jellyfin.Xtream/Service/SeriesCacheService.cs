@@ -21,6 +21,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Xtream.Client.Models;
+using MediaBrowser.Controller.Channels;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Model.Channels;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -339,18 +342,21 @@ public class SeriesCacheService : IDisposable
                         string.Join(", ", failedItems.Take(10)));
                 }
 
-                // Trigger Jellyfin to refresh channel items from our cache and populate jellyfin.db
+                // Eagerly populate Jellyfin's database by fetching all channel items
+                // This ensures browsing is instant without any lazy loading
                 try
                 {
-                    _logger?.LogInformation("Triggering Jellyfin channel refresh to populate jellyfin.db from cache");
-                    Plugin.Instance?.TaskService.CancelIfRunningAndQueue(
-                        "Jellyfin.LiveTv",
-                        "Jellyfin.LiveTv.Channels.RefreshChannelsScheduledTask");
-                    _logger?.LogInformation("Jellyfin channel refresh triggered successfully");
+                    _logger?.LogInformation("Starting eager population of Jellyfin database from cache...");
+                    await PopulateJellyfinDatabaseAsync(_refreshCancellationTokenSource.Token).ConfigureAwait(false);
+                    _logger?.LogInformation("Jellyfin database population completed");
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogInformation("Database population cancelled");
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Failed to trigger Jellyfin channel refresh - jellyfin.db may not be populated until user browses");
+                    _logger?.LogWarning(ex, "Failed to populate Jellyfin database - items may load lazily when browsing");
                 }
             }
             catch (OperationCanceledException)
@@ -534,6 +540,170 @@ public class SeriesCacheService : IDisposable
         _currentStatus = "Cache invalidated";
         _lastRefreshComplete = null;
         _logger?.LogInformation("Cache invalidated (version incremented to {Version})", _cacheVersion);
+    }
+
+    /// <summary>
+    /// Eagerly populates Jellyfin's database by fetching all channel items.
+    /// This forces Jellyfin to store all series, seasons, and episodes in jellyfin.db
+    /// so browsing is instant without any lazy loading.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the async operation.</returns>
+    public async Task PopulateJellyfinDatabaseAsync(CancellationToken cancellationToken)
+    {
+        _currentStatus = "Populating Jellyfin database...";
+
+        try
+        {
+            IChannelManager? channelManager = Plugin.Instance?.ChannelManager;
+            if (channelManager == null)
+            {
+                _logger?.LogWarning("ChannelManager not available, skipping eager database population");
+                return;
+            }
+
+            // Find our Series channel
+            _logger?.LogInformation("Looking for Xtream Series channel...");
+            var channelQuery = new ChannelQuery();
+            var channelsResult = await channelManager.GetChannelsInternalAsync(channelQuery).ConfigureAwait(false);
+            _logger?.LogInformation("Found {Count} channels total", channelsResult.TotalRecordCount);
+
+            var seriesChannel = channelsResult.Items.FirstOrDefault(c => c.Name == "Xtream Series");
+            if (seriesChannel == null)
+            {
+                _logger?.LogWarning("Xtream Series channel not found in {Count} channels, skipping eager database population", channelsResult.TotalRecordCount);
+                return;
+            }
+
+            Guid channelId = seriesChannel.Id;
+            _logger?.LogInformation("Found Xtream Series channel with ID {ChannelId}", channelId);
+
+            // Get root level items (all series in flat mode, or categories)
+            var rootQuery = new InternalItemsQuery
+            {
+                ChannelIds = new[] { channelId },
+                Recursive = false
+            };
+
+            _logger?.LogInformation("Fetching root level channel items to populate database...");
+
+            // Use a simple progress reporter that logs
+            var progress = new Progress<double>(p =>
+            {
+                if (p > 0 && (int)(p * 100) % 10 == 0)
+                {
+                    _logger?.LogDebug("Root fetch progress: {Progress:P0}", p);
+                }
+            });
+
+            var rootResult = await channelManager.GetChannelItemsInternal(
+                rootQuery,
+                progress,
+                cancellationToken).ConfigureAwait(false);
+
+            int rootCount = rootResult?.TotalRecordCount ?? 0;
+            int itemCount = rootResult?.Items?.Count ?? 0;
+            _logger?.LogInformation("Root level fetch complete: TotalRecordCount={TotalCount}, Items.Count={ItemCount}", rootCount, itemCount);
+
+            if (rootResult?.Items == null || itemCount == 0)
+            {
+                _logger?.LogInformation("No root items to process, database population complete");
+                return;
+            }
+
+            // Now iterate through each series to fetch seasons
+            int seriesProcessed = 0;
+            int seasonsProcessed = 0;
+            int episodesProcessed = 0;
+
+            _logger?.LogInformation("Processing {Count} root items for seasons and episodes...", itemCount);
+
+            foreach (var item in rootResult.Items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Log item type for debugging
+                string itemType = item?.GetType().Name ?? "null";
+                bool isFolder = item is Folder;
+
+                // Process all folders (series, categories, etc.)
+                if (isFolder)
+                {
+                    seriesProcessed++;
+
+                    // Get child items (seasons for series, series for categories)
+                    var childQuery = new InternalItemsQuery
+                    {
+                        ChannelIds = new[] { channelId },
+                        ParentId = item!.Id,
+                        Recursive = false
+                    };
+
+                    var childResult = await channelManager.GetChannelItemsInternal(
+                        childQuery,
+                        new Progress<double>(),
+                        cancellationToken).ConfigureAwait(false);
+
+                    int childCount = childResult?.Items?.Count ?? 0;
+
+                    // Process grandchildren (episodes for seasons)
+                    if (childResult?.Items != null)
+                    {
+                        foreach (var childItem in childResult.Items)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+
+                            if (childItem is Folder)
+                            {
+                                seasonsProcessed++;
+
+                                var grandchildQuery = new InternalItemsQuery
+                                {
+                                    ChannelIds = new[] { channelId },
+                                    ParentId = childItem.Id,
+                                    Recursive = false
+                                };
+
+                                var grandchildResult = await channelManager.GetChannelItemsInternal(
+                                    grandchildQuery,
+                                    new Progress<double>(),
+                                    cancellationToken).ConfigureAwait(false);
+
+                                episodesProcessed += grandchildResult?.TotalRecordCount ?? 0;
+                            }
+                        }
+                    }
+
+                    // Log progress every 5 series (less frequent since we have fewer)
+                    if (seriesProcessed % 5 == 0 || seriesProcessed == itemCount)
+                    {
+                        _logger?.LogInformation(
+                            "Database population progress: {Series}/{Total} items, {Seasons} seasons, {Episodes} episodes",
+                            seriesProcessed,
+                            itemCount,
+                            seasonsProcessed,
+                            episodesProcessed);
+                        _currentStatus = $"Populating database: {seriesProcessed}/{itemCount} items...";
+                    }
+                }
+            }
+
+            _logger?.LogInformation(
+                "Jellyfin database population completed: {Series} items, {Seasons} seasons, {Episodes} episodes",
+                seriesProcessed,
+                seasonsProcessed,
+                episodesProcessed);
+            _currentStatus = $"Database populated: {seriesProcessed} items, {seasonsProcessed} seasons, {episodesProcessed} episodes";
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("Database population cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error during Jellyfin database population");
+        }
     }
 
     /// <summary>
