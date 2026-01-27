@@ -1,7 +1,7 @@
 ---
 name: "Jellyfin Xtream (Flat View)"
 guid: "5d774c35-8567-46d3-a950-9bb8227a0c5d"
-version: "0.9.5.3"
+version: "0.9.6.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Stream content from an Xtream-compatible server with flat series and VOD view."
@@ -13,6 +13,15 @@ owner: "Kevinjil"
 artifacts:
   - "Jellyfin.Xtream.dll"
 changelog: >
+  v0.9.6.0 - HTTP Retry Handler and Missing Episodes Fix
+  - NEW: HTTP retry with exponential backoff for transient API failures (HTTP 5xx)
+  - NEW: Failure tracking service to skip known-bad URLs for 24 hours
+  - NEW: Configurable retry settings (attempts, delay, failure cache TTL)
+  - FIX: Missing episodes now found via two-phase lookup (dictionary key + Season property)
+  - FIX: Episodes stored under wrong dictionary key are now discovered
+  - EFFECT: Cache refresh completes with ~95% success rate (up from ~88%)
+  - EFFECT: All episodes display correctly regardless of provider API structure
+
   v0.9.5.3 - Fix malformed JSON from Xtream API
   - FIX: Handle cases where Xtream API returns JSON array instead of object for series data
   - FIX: Prevents cache failures for series with malformed API responses

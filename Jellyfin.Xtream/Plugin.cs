@@ -47,9 +47,18 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <param name="taskManager">Instance of the <see cref="ITaskManager"/> interface.</param>
     /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
     /// <param name="memoryCache">Instance of the <see cref="IMemoryCache"/> interface.</param>
+    /// <param name="failureTrackingService">Instance of the <see cref="FailureTrackingService"/> class.</param>
     /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
     /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ITaskManager taskManager, IXtreamClient xtreamClient, IMemoryCache memoryCache, ILogger<Plugin> logger, ILoggerFactory loggerFactory)
+    public Plugin(
+        IApplicationPaths applicationPaths,
+        IXmlSerializer xmlSerializer,
+        ITaskManager taskManager,
+        IXtreamClient xtreamClient,
+        IMemoryCache memoryCache,
+        FailureTrackingService failureTrackingService,
+        ILogger<Plugin> logger,
+        ILoggerFactory loggerFactory)
         : base(applicationPaths, xmlSerializer)
     {
         _instance = this;
@@ -59,10 +68,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             client.UpdateUserAgent();
         }
 
-        StreamService = new(xtreamClient);
+        StreamService = new(xtreamClient, loggerFactory.CreateLogger<Service.StreamService>());
         TaskService = new(taskManager);
         _logger = logger;
-        SeriesCacheService = new Service.SeriesCacheService(StreamService, memoryCache, loggerFactory.CreateLogger<Service.SeriesCacheService>());
+        SeriesCacheService = new Service.SeriesCacheService(StreamService, memoryCache, failureTrackingService, loggerFactory.CreateLogger<Service.SeriesCacheService>());
 
         // Start cache refresh in background (don't await - let it run async)
         // Only refresh if caching is enabled and credentials are configured

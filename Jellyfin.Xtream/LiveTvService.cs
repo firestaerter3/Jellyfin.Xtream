@@ -54,9 +54,22 @@ public class LiveTvService(IServerApplicationHost appHost, IHttpClientFactory ht
     /// <inheritdoc />
     public async Task<IEnumerable<ChannelInfo>> GetChannelsAsync(CancellationToken cancellationToken)
     {
-        Plugin plugin = Plugin.Instance;
+        Plugin? plugin = Plugin.Instance;
+        if (plugin?.StreamService == null)
+        {
+            logger.LogWarning("Plugin or StreamService is null in GetChannelsAsync, returning empty channel list");
+            return [];
+        }
+
         List<ChannelInfo> items = [];
-        foreach (StreamInfo channel in await plugin.StreamService.GetLiveStreamsWithOverrides(cancellationToken).ConfigureAwait(false))
+        IEnumerable<StreamInfo>? channels = await plugin.StreamService.GetLiveStreamsWithOverrides(cancellationToken).ConfigureAwait(false);
+        if (channels == null)
+        {
+            logger.LogWarning("GetLiveStreamsWithOverrides returned null in GetChannelsAsync");
+            return items;
+        }
+
+        foreach (StreamInfo channel in channels)
         {
             ParsedName parsed = StreamService.ParseName(channel.Name);
             items.Add(new ChannelInfo()

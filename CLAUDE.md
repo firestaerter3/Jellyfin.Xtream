@@ -68,6 +68,39 @@ Users add this repository URL to Jellyfin's plugin repositories:
 https://rolandb5.github.io/Jellyfin.Xtream/repository.json
 ```
 
+## Development & Testing Environment
+
+**Test Jellyfin Instance:** See `CLAUDE.local.md` for server details (Proxmox container, credentials, deployment paths)
+
+### Quick Deploy to Test Server
+```bash
+# Build plugin
+dotnet build Jellyfin.Xtream/Jellyfin.Xtream.csproj --configuration Release
+
+# Deploy to test server (see CLAUDE.local.md for server details)
+sshpass -p '<password>' scp -o StrictHostKeyChecking=no \
+  Jellyfin.Xtream/bin/Release/net9.0/Jellyfin.Xtream.dll \
+  root@<server-ip>:'/root/apps/jellyfin/library/data/plugins/Jellyfin Xtream (Flat View)_<version>/'
+
+# Restart Jellyfin container
+sshpass -p '<password>' ssh -o StrictHostKeyChecking=no root@<server-ip> "docker restart jellyfin"
+```
+
+### Check Logs
+```bash
+# View recent logs
+sshpass -p '<password>' ssh -o StrictHostKeyChecking=no root@<server-ip> \
+  "docker logs jellyfin 2>&1 | tail -50"
+
+# Monitor cache refresh progress
+sshpass -p '<password>' ssh -o StrictHostKeyChecking=no root@<server-ip> \
+  "docker logs jellyfin 2>&1 | grep 'Cache refresh\|Processing series' | tail -20"
+
+# Check cache hit/miss rates
+sshpass -p '<password>' ssh -o StrictHostKeyChecking=no root@<server-ip> \
+  "docker logs jellyfin 2>&1 | grep 'cache HIT\|cache MISS' | tail -30"
+```
+
 ## Documentation Structure
 
 **Start Here:** `docs/INDEX.md` - Master documentation hub

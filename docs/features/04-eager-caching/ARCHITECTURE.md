@@ -110,6 +110,116 @@ RefreshCacheAsync()
 
 ---
 
+### HTTP Retry and Failure Tracking
+
+**Purpose:** Improve cache reliability by automatically retrying transient provider API failures (HTTP 5xx errors).
+
+**Problem:** During cache refresh, ~12% of series (91 out of 760 in observed case) fail with HTTP 500 errors from the Xtream provider API. Without retry logic, these failures create permanent gaps in the cache until the next refresh cycle.
+
+**Components:**
+
+#### 1. RetryHandler (`Service/RetryHandler.cs`)
+**Responsibility:** Wraps HTTP operations with exponential backoff retry logic.
+
+**Key method:**
+```csharp
+Task<string?> ExecuteWithRetryAsync(
+    Uri uri,
+    Func<Uri, CancellationToken, Task<string>> operation,
+    CancellationToken cancellationToken)
+```
+
+**Retry logic:**
+```
+For attempt = 1 to MaxAttempts:
+  ├─ Check FailureTrackingService.IsKnownFailure(url)
+  │  └─ YES: Return null immediately (skip retry)
+  ├─ Execute HTTP request
+  ├─ On HttpRequestException with 5xx status:
+  │  ├─ Log warning with attempt number
+  │  ├─ If not last attempt: Wait exponential backoff delay
+  │  └─ Continue to next attempt
+  ├─ On success: Return result
+  └─ On non-retryable error (4xx): Throw immediately
+
+After all attempts exhausted:
+  ├─ Record in FailureTrackingService (cache for 24h)
+  └─ Return null (graceful degradation)
+```
+
+**Exponential backoff:**
+- Delay = `initialDelayMs * 2^(attempt-1)`
+- Default: 1000ms, 2000ms, 4000ms (for 3 attempts)
+
+**Retryable status codes:** 500, 502, 503, 504 (server errors)
+**Non-retryable:** 400, 401, 403, 404, 429 (client errors)
+
+#### 2. FailureTrackingService (`Service/FailureTrackingService.cs`)
+**Responsibility:** Track URLs that persistently fail (all retries exhausted) to avoid retry spam on subsequent refresh cycles.
+
+**Storage:** Uses `IMemoryCache` with configurable expiration (default: 24 hours)
+
+**Cache key format:**
+```
+http_failure_{MD5(url)}
+```
+
+**Key methods:**
+```csharp
+bool IsKnownFailure(string url)             // Check if URL is in failure cache
+void RecordFailure(string url, string errorDetails)  // Add to failure cache
+void ClearFailures()                         // Clear all failure records
+(int, List<string>) GetFailureStats()       // Get stats for logging
+```
+
+**Data flow example:**
+```
+SeriesCacheService.RefreshCacheAsync()
+  → StreamService.GetSeasons(seriesId)
+    → XtreamClient.QueryApi<SeriesStreamInfo>()
+      → Check FailureTrackingService.IsKnownFailure(url)
+        ├─ YES: Skip immediately, log as known failure
+        └─ NO: RetryHandler.ExecuteWithRetryAsync()
+           ├─ Attempt 1: HTTP request → 500 error → Wait 1s
+           ├─ Attempt 2: HTTP request → 500 error → Wait 2s
+           ├─ Attempt 3: HTTP request → 500 error → Wait 4s
+           └─ All failed:
+              ├─ Record in FailureTrackingService (cache for 24h)
+              └─ Return null (XtreamClient.GetEmptyObject())
+```
+
+**Configuration options:**
+```csharp
+// In PluginConfiguration.cs
+bool EnableHttpRetry = true;                    // Master switch
+int HttpRetryMaxAttempts = 3;                   // Retry count (0-10)
+int HttpRetryInitialDelayMs = 1000;             // Base delay (100-10000ms)
+int HttpFailureCacheExpirationHours = 24;       // Failure cache TTL (1-168h)
+bool HttpRetryThrowOnPersistentFailure = false; // Throw vs. silent skip
+```
+
+**Graceful degradation:**
+When all retries are exhausted, `XtreamClient.QueryApi()` returns an empty object (`GetEmptyObject<T>()`) instead of throwing:
+```csharp
+if (typeof(T) == typeof(SeriesStreamInfo))
+    return new SeriesStreamInfo();  // Empty series (no seasons/episodes)
+if (typeof(T) == typeof(List<Series>))
+    return new List<Series>();      // Empty list
+```
+
+**Logging:**
+- Retry attempts: `"HTTP 500 error on attempt 2/3 for {Url}. Retrying in 2000ms."`
+- Persistent failures: `"HTTP 500 error persisted after 3 attempts for {Url}. Recording as persistent failure."`
+- Failure summary: `"Cache refresh completed with 15 persistent HTTP failures. These items will be skipped for the next 24 hours."`
+
+**Performance impact:**
+- **First refresh after failures:** Additional time = `failureCount × (1s + 2s + 4s) = ~7s per failure`
+  - Example: 91 failures × 7s = ~10 minutes additional time (worst case if all are persistent)
+- **Subsequent refreshes:** Failures skipped immediately (no retry overhead)
+- **Transient error recovery:** Successful retries improve cache completeness from ~88% to 95%+ (estimated)
+
+---
+
 ### Layer 2: Jellyfin Database (`jellyfin.db`)
 
 **Location:** `/config/data/library.db` (SQLite database)

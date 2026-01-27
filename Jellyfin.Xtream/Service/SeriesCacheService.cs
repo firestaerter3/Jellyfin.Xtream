@@ -16,6 +16,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Xtream.Client.Models;
@@ -31,6 +33,7 @@ public class SeriesCacheService : IDisposable
 {
     private readonly StreamService _streamService;
     private readonly IMemoryCache _memoryCache;
+    private readonly FailureTrackingService _failureTrackingService;
     private readonly ILogger<SeriesCacheService>? _logger;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private int _cacheVersion = 0;
@@ -46,11 +49,17 @@ public class SeriesCacheService : IDisposable
     /// </summary>
     /// <param name="streamService">The stream service instance.</param>
     /// <param name="memoryCache">The memory cache instance.</param>
+    /// <param name="failureTrackingService">The failure tracking service instance.</param>
     /// <param name="logger">Optional logger instance.</param>
-    public SeriesCacheService(StreamService streamService, IMemoryCache memoryCache, ILogger<SeriesCacheService>? logger = null)
+    public SeriesCacheService(
+        StreamService streamService,
+        IMemoryCache memoryCache,
+        FailureTrackingService failureTrackingService,
+        ILogger<SeriesCacheService>? logger = null)
     {
         _streamService = streamService;
         _memoryCache = memoryCache;
+        _failureTrackingService = failureTrackingService;
         _logger = logger;
     }
 
@@ -119,6 +128,21 @@ public class SeriesCacheService : IDisposable
                 List<Category> categoryList = categories.ToList();
                 _memoryCache.Set($"{cachePrefix}categories", categoryList, cacheOptions);
                 _logger?.LogInformation("Found {CategoryCount} categories", categoryList.Count);
+
+                // Log configuration state for debugging
+                var seriesConfig = Plugin.Instance.Configuration.Series;
+                _logger?.LogInformation("Configuration has {ConfigCategoryCount} configured series categories", seriesConfig.Count);
+                foreach (var kvp in seriesConfig)
+                {
+                    if (kvp.Value.Count == 0)
+                    {
+                        _logger?.LogInformation("  Category {CategoryId}: ALL series allowed (empty config)", kvp.Key);
+                    }
+                    else
+                    {
+                        _logger?.LogInformation("  Category {CategoryId}: {SeriesCount} specific series configured", kvp.Key, kvp.Value.Count);
+                    }
+                }
 
                 int seriesCount = 0;
                 int seasonCount = 0;
@@ -217,6 +241,17 @@ public class SeriesCacheService : IDisposable
                                 _memoryCache.Set($"{cachePrefix}seriesinfo_{series.SeriesId}", seriesStreamInfo, cacheOptions);
                             }
                         }
+                        catch (HttpRequestException ex) when (ex.StatusCode >= HttpStatusCode.InternalServerError)
+                        {
+                            // HTTP 5xx errors - already retried by RetryHandler if enabled
+                            _logger?.LogWarning(
+                                "Persistent HTTP {StatusCode} error for series {SeriesId} ({SeriesName}) after {MaxRetries} retries: {Message}",
+                                ex.StatusCode,
+                                series.SeriesId,
+                                series.Name,
+                                Plugin.Instance?.Configuration.HttpRetryMaxAttempts ?? 3,
+                                ex.Message);
+                        }
                         catch (Exception ex)
                         {
                             _logger?.LogWarning(ex, "Failed to cache data for series {SeriesId} ({SeriesName})", series.SeriesId, series.Name);
@@ -232,11 +267,24 @@ public class SeriesCacheService : IDisposable
                 _lastRefreshComplete = DateTime.UtcNow;
                 _logger?.LogInformation("Cache refresh completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories", seriesCount, seasonCount, episodeCount, totalCategories);
 
+                // Log failure summary if failures occurred
+                var (failureCount, failedItems) = _failureTrackingService.GetFailureStats();
+                if (failureCount > 0)
+                {
+                    _logger?.LogWarning(
+                        "Cache refresh completed with {FailureCount} persistent HTTP failures. " +
+                        "These items will be skipped for the next {ExpirationHours} hours. " +
+                        "First 10 failed URLs: {FailedItems}",
+                        failureCount,
+                        Plugin.Instance?.Configuration.HttpFailureCacheExpirationHours ?? 24,
+                        string.Join(", ", failedItems.Take(10)));
+                }
+
                 // Trigger Jellyfin to refresh channel items from our cache and populate jellyfin.db
                 try
                 {
                     _logger?.LogInformation("Triggering Jellyfin channel refresh to populate jellyfin.db from cache");
-                    Plugin.Instance.TaskService.CancelIfRunningAndQueue(
+                    Plugin.Instance?.TaskService.CancelIfRunningAndQueue(
                         "Jellyfin.LiveTv",
                         "Jellyfin.LiveTv.Channels.RefreshChannelsScheduledTask");
                     _logger?.LogInformation("Jellyfin channel refresh triggered successfully");

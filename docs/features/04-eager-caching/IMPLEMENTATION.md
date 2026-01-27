@@ -428,6 +428,185 @@ return Ok();  // Return immediately
 
 ---
 
+## 7. HTTP Retry Implementation (v0.9.6.0)
+
+### Files Added
+
+#### 1. **Jellyfin.Xtream/Service/RetryHandler.cs**
+   - **Purpose:** Handles HTTP request retry logic with exponential backoff
+   - **Key Method:**
+     ```csharp
+     public async Task<string?> ExecuteWithRetryAsync(
+         Uri uri,
+         Func<Uri, CancellationToken, Task<string>> operation,
+         CancellationToken cancellationToken)
+     ```
+   - **Retry Strategy:**
+     - Check `FailureTrackingService.IsKnownFailure(url)` first
+     - If known failure: skip immediately, return null
+     - If not known: attempt request up to `HttpRetryMaxAttempts` times
+     - On 5xx error: wait exponential backoff delay, retry
+     - On 4xx error: fail immediately (non-retryable)
+     - After all retries fail: record in FailureTrackingService, return null
+   - **Exponential Backoff:**
+     ```csharp
+     int delayMs = initialDelayMs * (int)Math.Pow(2, attempt - 1);
+     // Default: 1000ms, 2000ms, 4000ms (for 3 attempts)
+     ```
+
+#### 2. **Jellyfin.Xtream/Service/FailureTrackingService.cs**
+   - **Purpose:** Track URLs that persistently fail to avoid retry spam
+   - **Key Methods:**
+     - `IsKnownFailure(string url)`: Check if URL is in failure cache
+     - `RecordFailure(string url, string errorDetails)`: Add URL to failure cache with 24h expiration
+     - `GetFailureStats()`: Return failure count and sample URLs for logging
+   - **Storage:** Uses `IMemoryCache` with cache keys: `http_failure_{MD5(url)}`
+   - **Expiration:** Configurable via `HttpFailureCacheExpirationHours` (default: 24 hours)
+
+### Files Modified
+
+#### 1. **Jellyfin.Xtream/Client/XtreamClient.cs**
+   - **Changed:** `QueryApi<T>()` method now uses `RetryHandler` when retry is enabled
+   - **New Method:** `GetEmptyObject<T>()` for graceful degradation on persistent failures
+   - **Constructor:** Added `RetryHandler retryHandler` parameter
+   - **Code:**
+     ```csharp
+     private async Task<T> QueryApi<T>(ConnectionInfo connectionInfo, string urlPath, CancellationToken cancellationToken)
+     {
+         Uri uri = new Uri(connectionInfo.BaseUrl + urlPath);
+
+         // Use retry handler if enabled
+         string? jsonContent;
+         if (Plugin.Instance?.Configuration.EnableHttpRetry ?? true)
+         {
+             jsonContent = await retryHandler.ExecuteWithRetryAsync(
+                 uri,
+                 (u, ct) => client.GetStringAsync(u, ct),
+                 cancellationToken).ConfigureAwait(false);
+
+             if (jsonContent == null)
+             {
+                 // Persistent failure, return empty object
+                 logger.LogWarning("Persistent HTTP failure for {Url}, returning empty object", uri);
+                 return GetEmptyObject<T>();
+             }
+         }
+         else
+         {
+             // Original behavior: no retry
+             jsonContent = await client.GetStringAsync(uri, cancellationToken).ConfigureAwait(false);
+         }
+
+         // ... JSON deserialization logic unchanged ...
+     }
+
+     private static T GetEmptyObject<T>()
+     {
+         if (typeof(T) == typeof(SeriesStreamInfo))
+             return (T)(object)new SeriesStreamInfo();
+         if (typeof(T) == typeof(List<Series>))
+             return (T)(object)new List<Series>();
+         // ... other types ...
+         return default(T)!;
+     }
+     ```
+
+#### 2. **Jellyfin.Xtream/Service/SeriesCacheService.cs**
+   - **Changed:** Enhanced error handling to distinguish HTTP 5xx errors
+   - **Added:** Failure summary logging at end of `RefreshCacheAsync()`
+   - **Constructor:** Added `FailureTrackingService failureTrackingService` parameter
+   - **Code:**
+     ```csharp
+     catch (HttpRequestException ex) when (ex.StatusCode >= HttpStatusCode.InternalServerError)
+     {
+         // HTTP 5xx errors - already retried by RetryHandler if enabled
+         _logger?.LogWarning(
+             "Persistent HTTP {StatusCode} error for series {SeriesId} ({SeriesName}) after {MaxRetries} retries: {Message}",
+             ex.StatusCode,
+             series.SeriesId,
+             series.Name,
+             Plugin.Instance?.Configuration.HttpRetryMaxAttempts ?? 3,
+             ex.Message);
+     }
+
+     // At end of RefreshCacheAsync():
+     var (failureCount, failedItems) = _failureTrackingService.GetFailureStats();
+     if (failureCount > 0)
+     {
+         _logger?.LogWarning(
+             "Cache refresh completed with {FailureCount} persistent HTTP failures. " +
+             "These items will be skipped for the next {ExpirationHours} hours.",
+             failureCount,
+             Plugin.Instance?.Configuration.HttpFailureCacheExpirationHours ?? 24);
+     }
+     ```
+
+#### 3. **Jellyfin.Xtream/Configuration/PluginConfiguration.cs**
+   - **Added:** 5 new configuration properties:
+     ```csharp
+     public bool EnableHttpRetry { get; set; } = true;
+     public int HttpRetryMaxAttempts { get; set; } = 3;
+     public int HttpRetryInitialDelayMs { get; set; } = 1000;
+     public int HttpFailureCacheExpirationHours { get; set; } = 24;
+     public bool HttpRetryThrowOnPersistentFailure { get; set; } = false;
+     ```
+
+#### 4. **Jellyfin.Xtream/PluginServiceRegistrator.cs**
+   - **Added:** Service registrations:
+     ```csharp
+     serviceCollection.AddSingleton<RetryHandler>();
+     serviceCollection.AddSingleton<FailureTrackingService>();
+     ```
+
+#### 5. **Jellyfin.Xtream/Plugin.cs**
+   - **Changed:** Constructor now accepts `FailureTrackingService` parameter
+   - **Changed:** Pass `failureTrackingService` to `SeriesCacheService` constructor
+
+### Implementation Decisions
+
+#### 1. **Custom Retry vs. Polly Library**
+   - **Decision:** Implement custom retry logic
+   - **Rationale:**
+     - Minimal dependencies (project only has 3 core dependencies)
+     - Full control over retry logic and cancellation handling
+     - Consistent with Jellyfin core (doesn't use Polly)
+     - Better for upstream PR contribution (less external dependencies)
+     - Simple requirements don't justify adding a library
+
+#### 2. **Graceful Degradation vs. Throwing**
+   - **Decision:** Return empty objects by default, configurable throwing
+   - **Rationale:**
+     - Partial cache is better than no cache (12% failures shouldn't break 88% successes)
+     - Users can enable throwing via `HttpRetryThrowOnPersistentFailure` if needed
+     - Cache refresh completes even with failures
+     - Aligns with existing error handling philosophy
+
+#### 3. **Failure Cache Implementation**
+   - **Decision:** Use `IMemoryCache` with MD5-hashed cache keys
+   - **Rationale:**
+     - Reuse existing infrastructure (no new dependencies)
+     - 24-hour expiration ensures failures are retried eventually
+     - MD5 collision risk negligible for cache keys (non-cryptographic use)
+     - Fast lookups (O(1)) with low memory overhead
+
+#### 4. **Exponential Backoff Parameters**
+   - **Decision:** Default 3 attempts with 1s, 2s, 4s delays
+   - **Rationale:**
+     - Balances reliability vs. performance (7s total delay per failure)
+     - Transient errors typically resolve within seconds
+     - Configurable for users with different network conditions
+     - Industry standard backoff strategy
+
+#### 5. **Retryable vs. Non-retryable Status Codes**
+   - **Decision:** Retry 5xx only, fail immediately on 4xx
+   - **Rationale:**
+     - 5xx = server errors (transient, worth retrying)
+     - 4xx = client errors (permanent, retrying won't help)
+     - 429 (rate limit) handled as non-retryable (provider issue, not transient)
+     - Network errors (no status code) are retryable
+
+---
+
 ## Known Limitations
 
 1. **Cache lost on restart**: IMemoryCache is in-process, not persistent

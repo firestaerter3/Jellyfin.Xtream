@@ -329,10 +329,12 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         {
             // Use cached data - get season IDs from Episodes dictionary keys
             seasons = cachedSeriesInfo.Episodes.Keys.Select(seasonId => new Tuple<SeriesStreamInfo, int>(cachedSeriesInfo, seasonId));
+            logger.LogInformation("GetSeasons cache HIT for series {SeriesId} - returning {Count} seasons from cache", seriesId, seasons.Count());
         }
         else
         {
             // Fallback to API call
+            logger.LogWarning("GetSeasons cache MISS for series {SeriesId} - falling back to API call", seriesId);
             seasons = await Plugin.Instance.StreamService.GetSeasons(seriesId, cancellationToken).ConfigureAwait(false);
         }
 
@@ -359,10 +361,12 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
             // Use cached data
             items = new List<ChannelItemInfo>(
                 cachedEpisodes.Select(episode => CreateChannelItemInfo(cachedSeriesInfo, cachedSeason, episode)));
+            logger.LogInformation("GetEpisodes cache HIT for series {SeriesId} season {SeasonId} - returning {Count} episodes from cache", seriesId, seasonId, items.Count);
         }
         else
         {
             // Fallback to API call
+            logger.LogWarning("GetEpisodes cache MISS for series {SeriesId} season {SeasonId} (cachedEpisodes: {HasEpisodes}, cachedSeriesInfo: {HasInfo}) - falling back to API call", seriesId, seasonId, cachedEpisodes != null, cachedSeriesInfo != null);
             IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> episodes = await Plugin.Instance.StreamService.GetEpisodes(seriesId, seasonId, cancellationToken).ConfigureAwait(false);
             items = new List<ChannelItemInfo>(
                 episodes.Select((Tuple<SeriesStreamInfo, Season?, Episode> tuple) => CreateChannelItemInfo(tuple.Item1, tuple.Item2, tuple.Item3)));

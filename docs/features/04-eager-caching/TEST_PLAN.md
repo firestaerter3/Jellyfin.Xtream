@@ -573,6 +573,239 @@ docker logs jellyfin --tail 500 2>&1 | grep -iE 'cache refresh|Triggering|popula
 
 ---
 
+## Test Suite 7: HTTP Retry Logic (v0.9.6.0)
+
+### TC-7.1: Transient 500 Error Recovery
+
+**Objective:** Verify that transient HTTP 500 errors are retried successfully
+
+**Preconditions:**
+- Plugin installed with retry enabled (`EnableHttpRetry = true`)
+- `HttpRetryMaxAttempts = 3`
+- Mock or flaky Xtream provider returning intermittent 500 errors
+
+**Steps:**
+1. Identify series that occasionally returns 500 errors
+2. Trigger cache refresh via "Refresh Now" button
+3. Monitor Jellyfin logs during refresh
+
+**Expected Result:**
+- [ ] Log shows retry attempts: "HTTP 500 error on attempt 1/3 for {Url}. Retrying in 1000ms."
+- [ ] Log shows retry attempts: "HTTP 500 error on attempt 2/3 for {Url}. Retrying in 2000ms."
+- [ ] Eventually succeeds: Series data cached successfully
+- [ ] No entry in failure tracking cache (transient error recovered)
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.2: Persistent 500 Error Handling
+
+**Objective:** Verify that persistent HTTP 500 errors are tracked and skipped
+
+**Preconditions:**
+- Plugin installed with retry enabled
+- Xtream provider returning consistent 500 errors for specific series
+
+**Steps:**
+1. Trigger cache refresh
+2. Monitor logs for series that consistently fail
+3. Wait for cache refresh to complete
+4. Trigger second cache refresh immediately
+5. Monitor logs for same series
+
+**Expected Result:**
+- [ ] First refresh: Retry attempts logged (3 attempts, 7s total delay)
+- [ ] First refresh: Persistent failure logged with series ID
+- [ ] Failure summary logged: "Cache refresh completed with N persistent HTTP failures"
+- [ ] Series recorded in failure cache with 24h expiration
+- [ ] Second refresh: Series skipped immediately (no retry attempts)
+- [ ] Log shows: "Skipping retry for known persistent failure: {Url}"
+- [ ] Cache refresh faster on second attempt (failures skipped)
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.3: Non-Retryable 404 Error
+
+**Objective:** Verify that 4xx client errors fail immediately without retry
+
+**Preconditions:**
+- Plugin installed with retry enabled
+- Invalid series ID causing 404 Not Found
+
+**Steps:**
+1. Attempt to fetch data for non-existent series
+2. Monitor logs for retry behavior
+
+**Expected Result:**
+- [ ] No retry attempts logged
+- [ ] Immediate failure: "Non-retryable HTTP 404 error for {Url}. Not retrying."
+- [ ] Exception thrown or graceful degradation (depending on `HttpRetryThrowOnPersistentFailure`)
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.4: Exponential Backoff Timing
+
+**Objective:** Verify exponential backoff delays are correct
+
+**Preconditions:**
+- Plugin installed with default settings
+- `HttpRetryMaxAttempts = 3`, `HttpRetryInitialDelayMs = 1000`
+
+**Steps:**
+1. Trigger cache refresh with known failing series
+2. Monitor timestamps in logs for retry attempts
+
+**Expected Result:**
+- [ ] Attempt 1 → 2: ~1 second delay
+- [ ] Attempt 2 → 3: ~2 second delay
+- [ ] Total retry time: ~3-4 seconds (excluding API call duration)
+- [ ] Log confirms: "Retrying in 1000ms" → "Retrying in 2000ms"
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.5: Retry Disabled Behavior
+
+**Objective:** Verify original behavior preserved when retry disabled
+
+**Preconditions:**
+- `EnableHttpRetry = false`
+
+**Steps:**
+1. Trigger cache refresh
+2. Encounter 500 error
+3. Monitor logs
+
+**Expected Result:**
+- [ ] No retry attempts
+- [ ] Immediate failure on first 500 error
+- [ ] Exception thrown or empty object returned (depending on error handling)
+- [ ] No entries in failure tracking cache
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.6: Cancellation During Retry
+
+**Objective:** Verify retry respects cancellation token
+
+**Preconditions:**
+- Plugin installed with retry enabled
+- Cache refresh in progress with retry delays
+
+**Steps:**
+1. Start cache refresh
+2. Wait for retry attempt to start (in backoff delay)
+3. Click "Clear Cache" to cancel refresh
+
+**Expected Result:**
+- [ ] Backoff delay interrupted immediately
+- [ ] OperationCanceledException logged
+- [ ] No additional retry attempts after cancellation
+- [ ] Cache version incremented (clear successful)
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.7: Failure Cache Expiration
+
+**Objective:** Verify failed URLs are retried after 24 hours
+
+**Preconditions:**
+- `HttpFailureCacheExpirationHours = 24`
+- Previously failed URL in failure cache
+
+**Steps:**
+1. Record timestamp of failure
+2. Wait 24+ hours (or modify expiration to 1 minute for faster testing)
+3. Trigger cache refresh
+4. Monitor logs for same URL
+
+**Expected Result:**
+- [ ] After expiration: URL no longer in failure cache
+- [ ] Retry attempts resume for previously failed URL
+- [ ] If still failing: Re-recorded in failure cache with new expiration
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.8: Configuration Validation
+
+**Objective:** Verify configuration boundaries are enforced
+
+**Preconditions:**
+- Access to plugin configuration
+
+**Steps:**
+1. Set `HttpRetryMaxAttempts = 15` (beyond max of 10)
+2. Set `HttpRetryInitialDelayMs = 50` (below min of 100)
+3. Trigger cache refresh
+4. Monitor actual retry behavior
+
+**Expected Result:**
+- [ ] Max attempts capped at 10
+- [ ] Initial delay capped at minimum 100ms
+- [ ] Logs reflect validated configuration values
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.9: Performance Impact Measurement
+
+**Objective:** Measure performance impact of retry logic
+
+**Preconditions:**
+- 760 series library with 91 known failures
+- Retry enabled vs. disabled comparison
+
+**Steps:**
+1. Disable retry: Trigger cache refresh, record duration and failure count
+2. Enable retry: Trigger cache refresh, record duration and failure count
+3. Compare results
+
+**Expected Result:**
+- [ ] Retry disabled: ~18 minutes, 91 failures
+- [ ] Retry enabled (first run): ~25-30 minutes, 40-50 failures (transients recovered)
+- [ ] Retry enabled (second run): ~18 minutes, <5 additional minutes (failures skipped)
+- [ ] Cache completeness improved from 88% to 94-95%
+
+**Pass/Fail:** ____
+
+---
+
+### TC-7.10: Graceful Degradation
+
+**Objective:** Verify empty objects returned on persistent failure
+
+**Preconditions:**
+- `HttpRetryThrowOnPersistentFailure = false` (default)
+- Series with persistent 500 error
+
+**Steps:**
+1. Trigger cache refresh
+2. After all retries exhausted for failing series
+3. Check cache for series data
+
+**Expected Result:**
+- [ ] Empty `SeriesStreamInfo` object stored in cache
+- [ ] No exception thrown
+- [ ] Cache refresh completes successfully
+- [ ] Other series (88%) cached normally
+
+**Pass/Fail:** ____
+
+---
+
 ## Test Execution Summary
 
 | Suite | Total | Passed | Failed | Blocked |
@@ -583,7 +816,8 @@ docker logs jellyfin --tail 500 2>&1 | grep -iE 'cache refresh|Triggering|popula
 | 4. Error Handling | 4 | | | |
 | 5. Performance | 3 | | | |
 | 6. Edge Cases | 4 | | | |
-| **Total** | **22** | | | |
+| 7. HTTP Retry Logic | 10 | | | |
+| **Total** | **32** | | | |
 
 ---
 

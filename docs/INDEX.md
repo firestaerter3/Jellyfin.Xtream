@@ -40,12 +40,19 @@ Enhanced title parsing to handle Unicode pipe characters (┃, │, ｜) in addi
 - [Test Plan](features/02-unicode-pipe-support/TEST_PLAN.md) - Automated and manual test cases
 - [Changelog](features/02-unicode-pipe-support/CHANGELOG.md) - Version history
 
-#### 03 - Missing Episodes Fix
+#### [03 - Missing Episodes Fix](features/03-missing-episodes-fix/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.4.x)
+**PR Ready:** 🟢 Ready for upstream submission
+**Testing:** Manual tests defined
+**Documentation:** ✅ Complete
 
-Fixed bug where episodes wouldn't display due to cache invalidation issues.
+Fixed bug where episodes wouldn't display due to Xtream API storing episodes under incorrect dictionary keys.
 
-*Documentation in progress*
+- [Requirements](features/03-missing-episodes-fix/REQUIREMENTS.md) - User stories and functional requirements
+- [Architecture](features/03-missing-episodes-fix/ARCHITECTURE.md) - Two-phase lookup strategy
+- [Implementation](features/03-missing-episodes-fix/IMPLEMENTATION.md) - Code changes in GetEpisodes method
+- [Test Plan](features/03-missing-episodes-fix/TEST_PLAN.md) - Manual test cases
+- [Changelog](features/03-missing-episodes-fix/CHANGELOG.md) - Version history
 
 #### [04 - Eager Caching](features/04-eager-caching/REQUIREMENTS.md) ⭐ **Major Feature**
 **Status:** ✅ Implemented (v0.9.5.0+)
@@ -61,26 +68,47 @@ Pre-fetch and cache all series data upfront, automatically populate Jellyfin dat
 - [Challenges](features/04-eager-caching/CHALLENGES.md) - Cache invalidation analysis
 - [Changelog](features/04-eager-caching/CHANGELOG.md) - Complete version history
 
-#### 05 - Malformed JSON Handling
+#### [05 - Malformed JSON Handling](features/05-malformed-json-handling/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.5.3)
+**PR Ready:** 🟡 Bundle with Feature 04
+**Testing:** Manual tests defined
+**Documentation:** ✅ Complete
 
-Handle cases where Xtream API returns malformed JSON (array instead of object).
+Handle cases where Xtream API returns malformed JSON (array instead of object for SeriesStreamInfo).
 
-*Documentation in progress*
+- [Requirements](features/05-malformed-json-handling/REQUIREMENTS.md) - User stories and functional requirements
+- [Architecture](features/05-malformed-json-handling/ARCHITECTURE.md) - Detection and fallback design
+- [Implementation](features/05-malformed-json-handling/IMPLEMENTATION.md) - Code changes in XtreamClient
+- [Test Plan](features/05-malformed-json-handling/TEST_PLAN.md) - Manual test cases
+- [Changelog](features/05-malformed-json-handling/CHANGELOG.md) - Version history
 
-#### 06 - Clear Cache DB Cleanup
+#### [06 - Clear Cache DB Cleanup](features/06-clear-cache-cleanup/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.5.2)
+**PR Ready:** 🟡 Bundle with Feature 04
+**Testing:** ✅ 16/16 testable cases pass
+**Documentation:** ✅ Complete
 
 Clear Cache button now triggers Jellyfin database cleanup to remove orphaned items.
 
-*Documentation in progress*
+- [Requirements](features/06-clear-cache-cleanup/REQUIREMENTS.md) - User stories and functional requirements
+- [Architecture](features/06-clear-cache-cleanup/ARCHITECTURE.md) - Data flow and Jellyfin integration
+- [Implementation](features/06-clear-cache-cleanup/IMPLEMENTATION.md) - Code changes and edge cases
+- [Test Plan](features/06-clear-cache-cleanup/TEST_PLAN.md) - Manual test cases
+- [Changelog](features/06-clear-cache-cleanup/CHANGELOG.md) - Version history
 
-#### 07 - Config UI Error Handling
+#### [07 - Config UI Error Handling](features/07-config-ui-error-handling/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.4.x)
+**PR Ready:** 🟡 Bundle with Feature 04
+**Testing:** Manual tests defined
+**Documentation:** ✅ Complete
 
-Improved error handling and user feedback in configuration UI (Clear Cache stuck, etc.).
+Improved error handling and user feedback in configuration UI (Clear Cache stuck, error stacking, progress display).
 
-*Documentation in progress*
+- [Requirements](features/07-config-ui-error-handling/REQUIREMENTS.md) - User stories and functional requirements
+- [Architecture](features/07-config-ui-error-handling/ARCHITECTURE.md) - UI patterns and data flow
+- [Implementation](features/07-config-ui-error-handling/IMPLEMENTATION.md) - Code changes across JS/C# files
+- [Test Plan](features/07-config-ui-error-handling/TEST_PLAN.md) - Manual test cases
+- [Changelog](features/07-config-ui-error-handling/CHANGELOG.md) - Version history
 
 ---
 
@@ -255,7 +283,7 @@ This comprehensive documentation aims to:
 
 - **Index Created:** 2026-01-27
 - **Last Modified:** 2026-01-27
-- **Documentation Version:** 1.1
+- **Documentation Version:** 1.3
 - **Plugin Version:** 0.9.5.3
 
 ---

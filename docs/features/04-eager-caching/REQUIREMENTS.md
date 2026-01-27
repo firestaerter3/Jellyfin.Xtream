@@ -131,6 +131,34 @@ Xtream API (slow) → Plugin Cache (RAM) → Jellyfin DB (persistent) → User b
 
 ---
 
+### FR-7: HTTP Error Retry with Exponential Backoff
+
+**ID:** FR-7
+**Priority:** High
+**Description:** The system shall automatically retry transient HTTP errors during cache refresh to improve reliability and cache completeness.
+
+**Acceptance Criteria:**
+- [x] Retry HTTP 5xx errors (500, 502, 503, 504) with exponential backoff
+- [x] Default: 3 retry attempts with delays of 1s, 2s, 4s
+- [x] Track persistent failures to avoid repeated retries
+- [x] Cache failure state for 24 hours (configurable)
+- [x] Skip known-failed URLs immediately on subsequent refreshes
+- [x] Log retry attempts and failure summary
+- [x] Make retry behavior configurable (enable/disable, max attempts, delays)
+- [x] Non-retryable errors (4xx) fail immediately without retry
+- [x] Cancellation token honored during retry delays
+
+**Rationale:** Provider API transient failures (observed: 91 series / 12% of catalog failing with HTTP 500) should not cause permanent cache gaps. Automatic retry improves cache completeness and user experience without manual intervention.
+
+**Configuration Options:**
+- `EnableHttpRetry` (bool, default: true) - Master switch for retry functionality
+- `HttpRetryMaxAttempts` (int, default: 3, range: 0-10) - Number of retry attempts
+- `HttpRetryInitialDelayMs` (int, default: 1000, range: 100-10000) - Base delay for exponential backoff
+- `HttpFailureCacheExpirationHours` (int, default: 24, range: 1-168) - How long to cache failure records
+- `HttpRetryThrowOnPersistentFailure` (bool, default: false) - Whether to throw or silently skip after all retries
+
+---
+
 ## 3. Non-Functional Requirements
 
 ### NFR-1: Performance
@@ -158,16 +186,20 @@ Xtream API (slow) → Plugin Cache (RAM) → Jellyfin DB (persistent) → User b
 
 ---
 
-### NFR-3: Reliability
+### NFR-3: Reliability (Enhanced)
 
 **ID:** NFR-3
-**Description:** The system shall handle failures gracefully.
+**Description:** The system shall handle failures gracefully with automatic retry for transient errors.
 
 **Acceptance Criteria:**
-- [ ] API failures logged with details
-- [ ] Partial cache usable if some series fail
-- [ ] Jellyfin trigger failure doesn't crash plugin
-- [ ] Cancellation supported during refresh
+- [x] Transient HTTP errors (5xx) auto-retry up to 3 times with exponential backoff
+- [x] Persistent failures tracked for 24 hours to avoid retry spam
+- [x] API failures logged with details (including retry attempts)
+- [x] Partial cache usable if some series fail
+- [x] Jellyfin trigger failure doesn't crash plugin
+- [x] Cancellation supported during refresh (including retry delays)
+- [x] Cache refresh completes even with partial failures
+- [x] Failure summary logged at end of refresh with count and sample URLs
 
 ---
 
