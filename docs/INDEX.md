@@ -15,6 +15,7 @@ Each feature is documented with a complete set of files covering requirements, a
 #### [01 - Flat View](features/01-flat-view/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.1.0)
 **PR Ready:** 🟢 Ready for upstream submission
+**Testing:** ✅ 8/8 automated + 29/33 manual tests pass
 **Documentation:** ✅ Complete
 
 Display all series/movies in a single alphabetical list without category folders.
@@ -22,12 +23,13 @@ Display all series/movies in a single alphabetical list without category folders
 - [Requirements](features/01-flat-view/REQUIREMENTS.md) - User stories and functional requirements
 - [Architecture](features/01-flat-view/ARCHITECTURE.md) - Design decisions and data flow
 - [Implementation](features/01-flat-view/IMPLEMENTATION.md) - Detailed code changes
-- [Test Plan](features/01-flat-view/TEST_PLAN.md) - Manual test cases and results
+- [Test Plan](features/01-flat-view/TEST_PLAN.md) - Automated and manual test cases
 - [Changelog](features/01-flat-view/CHANGELOG.md) - Version history and evolution
 
 #### [02 - Unicode Pipe Support](features/02-unicode-pipe-support/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.4.x)
 **PR Ready:** 🟢 Ready for upstream submission
+**Testing:** ✅ 12/12 automated + 14/15 manual tests pass
 **Documentation:** ✅ Complete
 
 Enhanced title parsing to handle Unicode pipe characters (┃, │, ｜) in addition to ASCII pipes.
@@ -35,7 +37,7 @@ Enhanced title parsing to handle Unicode pipe characters (┃, │, ｜) in addi
 - [Requirements](features/02-unicode-pipe-support/REQUIREMENTS.md) - User stories and functional requirements
 - [Architecture](features/02-unicode-pipe-support/ARCHITECTURE.md) - Regex design and character handling
 - [Implementation](features/02-unicode-pipe-support/IMPLEMENTATION.md) - Code changes (1 file, 5 lines)
-- [Test Plan](features/02-unicode-pipe-support/TEST_PLAN.md) - Manual test cases and results
+- [Test Plan](features/02-unicode-pipe-support/TEST_PLAN.md) - Automated and manual test cases
 - [Changelog](features/02-unicode-pipe-support/CHANGELOG.md) - Version history
 
 #### 03 - Missing Episodes Fix
@@ -48,13 +50,14 @@ Fixed bug where episodes wouldn't display due to cache invalidation issues.
 #### [04 - Eager Caching](features/04-eager-caching/REQUIREMENTS.md) ⭐ **Major Feature**
 **Status:** ✅ Implemented (v0.9.5.0+)
 **PR Ready:** 🟡 Needs upstream testing and splitting
+**Testing:** ✅ 12/12 automated tests pass
 
 Pre-fetch and cache all series data upfront, automatically populate Jellyfin database for instant browsing.
 
 - [Requirements](features/04-eager-caching/REQUIREMENTS.md) - Comprehensive requirements document
 - [Architecture](features/04-eager-caching/ARCHITECTURE.md) - Three-layer cache architecture
 - [Implementation](features/04-eager-caching/IMPLEMENTATION.md) - Detailed code changes
-- [Test Plan](features/04-eager-caching/TEST_PLAN.md) - Manual test cases
+- [Test Plan](features/04-eager-caching/TEST_PLAN.md) - Automated and manual test cases
 - [Challenges](features/04-eager-caching/CHALLENGES.md) - Cache invalidation analysis
 - [Changelog](features/04-eager-caching/CHANGELOG.md) - Complete version history
 
@@ -252,7 +255,7 @@ This comprehensive documentation aims to:
 
 - **Index Created:** 2026-01-27
 - **Last Modified:** 2026-01-27
-- **Documentation Version:** 1.0
+- **Documentation Version:** 1.1
 - **Plugin Version:** 0.9.5.3
 
 ---

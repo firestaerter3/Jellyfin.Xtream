@@ -10,9 +10,44 @@
 
 ## Testing Approach
 
-**Manual Testing Only:** This test plan covers manual testing procedures. The Jellyfin.Xtream project does not currently have a unit test framework configured.
+This feature has been tested using both automated logic tests and manual integration testing.
 
-**Future Consideration:** If unit tests are added to the project, the following test cases would be ideal candidates for `ParseName()` unit tests with parameterized test data.
+**Note:** The Jellyfin.Xtream project does not currently have a unit test framework configured. The automated tests below were executed as standalone C# verification scripts.
+
+---
+
+## Automated Logic Tests
+
+**Test Date:** 2026-01-27
+**Branch:** `feature/unicode-parsing-isolated`
+**Result:** **12/12 tests passed (100%)**
+
+| Test | Input | Expected | Result |
+|------|-------|----------|--------|
+| 1 | `┃NL┃ Breaking Bad` | `Breaking Bad` | PASS |
+| 2 | `│HD│ Movie Name` | `Movie Name` | PASS |
+| 3 | `｜4K｜ Film Title` | `Film Title` | PASS |
+| 4 | `┃ NL ┃ Show Name` | `Show Name` | PASS |
+| 5 | `┃NL┃ ┃HD┃ Series Name` | `Series Name` | PASS |
+| 6 | `[US] \|EN\| ┃HD┃ The Show` | `The Show` | PASS |
+| 7 | `\|HD\| Regular Title` | `Regular Title` | PASS |
+| 8 | `[UK] Another Title` | `Another Title` | PASS |
+| 9 | `Clean Title Name` | `Clean Title Name` | PASS |
+| 10 | `Show Name ┃HD┃` | `Show Name` | PASS |
+| 11 | `\| TAG \| Title` | `Title` | PASS |
+| 12 | `│ HD │ Movie` | `Movie` | PASS |
+
+**What Was Verified:**
+- Heavy vertical pipe (U+2503) correctly stripped
+- Light vertical pipe (U+2502) correctly stripped
+- Fullwidth vertical line (U+FF5C) correctly stripped
+- Whitespace inside tags trimmed properly
+- Multiple tags stripped in sequence
+- Mixed ASCII and Unicode tags handled
+- ASCII pipe regression (still works)
+- Bracket tag regression (still works)
+- No-tag pass-through works
+- Trailing tags stripped
 
 ---
 
@@ -348,12 +383,13 @@
 
 | Category | Total | Pass | Fail | Skip |
 |----------|-------|------|------|------|
+| Automated Tests | 12 | 12 | 0 | 0 |
 | Manual Tests | 12 | 11 | 0 | 1 |
 | Integration Tests | 2 | 2 | 0 | 0 |
 | Regression Tests | 1 | 1 | 0 | 0 |
-| **Total** | **15** | **14** | **0** | **1** |
+| **Total** | **27** | **26** | **0** | **1** |
 
-**Pass Rate:** 93% (14/15)
+**Pass Rate:** 96% (26/27)
 **Skipped:** Edge case (only-tags input)
 
 ---

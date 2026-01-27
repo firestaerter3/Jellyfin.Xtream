@@ -7,6 +7,42 @@
 
 ---
 
+## Testing Approach
+
+This feature has been tested using both automated logic tests and manual integration testing.
+
+---
+
+## Automated Logic Tests
+
+**Test Date:** 2026-01-27
+**Branch:** `feature/flat-view-with-caching`
+**Result:** **12/12 tests passed (100%)**
+
+| Test | Description | Result |
+|------|-------------|--------|
+| 1 | TryGetValue returns false when key not in cache | PASS |
+| 2 | Set stores value and TryGetValue returns true | PASS |
+| 3 | Remove deletes key from cache | PASS |
+| 4 | Cache version starts at 1 | PASS |
+| 5 | InvalidateCache increments version | PASS |
+| 6 | Multiple invalidations increment correctly | PASS |
+| 7 | Invalidation clears existing keys | PASS |
+| 8 | IsRefreshInProgress initially false | PASS |
+| 9 | Concurrent refresh attempts blocked (semaphore) | PASS |
+| 10 | Cache key prefixing with version works | PASS |
+| 11 | GetSeriesKey generates correct format | PASS |
+| 12 | GetEpisodesKey generates correct format | PASS |
+
+**What Was Verified:**
+- Core cache operations (get/set/remove) work correctly
+- Version-based invalidation increments properly
+- Concurrent refresh prevention via SemaphoreSlim
+- Cache key generation with version prefix
+- Invalidation clears stale keys
+
+---
+
 ## Test Environment Setup
 
 ### Prerequisites
