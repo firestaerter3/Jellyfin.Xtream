@@ -25,12 +25,18 @@ Display all series/movies in a single alphabetical list without category folders
 - [Test Plan](features/01-flat-view/TEST_PLAN.md) - Manual test cases and results
 - [Changelog](features/01-flat-view/CHANGELOG.md) - Version history and evolution
 
-#### 02 - Unicode Pipe Support
+#### [02 - Unicode Pipe Support](features/02-unicode-pipe-support/REQUIREMENTS.md)
 **Status:** ✅ Implemented (v0.9.4.x)
+**PR Ready:** 🟢 Ready for upstream submission
+**Documentation:** ✅ Complete
 
 Enhanced title parsing to handle Unicode pipe characters (┃, │, ｜) in addition to ASCII pipes.
 
-*Documentation in progress*
+- [Requirements](features/02-unicode-pipe-support/REQUIREMENTS.md) - User stories and functional requirements
+- [Architecture](features/02-unicode-pipe-support/ARCHITECTURE.md) - Regex design and character handling
+- [Implementation](features/02-unicode-pipe-support/IMPLEMENTATION.md) - Code changes (1 file, 5 lines)
+- [Test Plan](features/02-unicode-pipe-support/TEST_PLAN.md) - Manual test cases and results
+- [Changelog](features/02-unicode-pipe-support/CHANGELOG.md) - Version history
 
 #### 03 - Missing Episodes Fix
 **Status:** ✅ Implemented (v0.9.4.x)
