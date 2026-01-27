@@ -160,6 +160,7 @@ const populateCategoriesTable = (table, loadConfig, loadCategories, loadItems) =
     .then(([config, categories]) => {
       const data = config || {};
       console.log('Categories loaded:', categories);
+      console.log('Initial config data:', JSON.stringify(data, null, 2));
       if (!categories || categories.length === 0) {
         Dashboard.hideLoadingMsg();
         const errorRow = document.createElement('tr');

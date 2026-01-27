@@ -272,8 +272,22 @@ public class SeriesChannel(ILogger<SeriesChannel> logger) : IChannel, IDisableMe
         {
             try
             {
-                IEnumerable<Series> series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
-                logger.LogInformation("GetAllSeriesFlattened got {Count} series from category {CategoryId}", series.Count(), category.CategoryId);
+                // Try to get from cache first
+                IEnumerable<Series>? cachedSeries = Plugin.Instance.SeriesCacheService.GetCachedSeriesList(category.CategoryId);
+                IEnumerable<Series> series;
+
+                if (cachedSeries != null)
+                {
+                    series = cachedSeries;
+                    logger.LogInformation("GetAllSeriesFlattened got {Count} series from cache for category {CategoryId}", series.Count(), category.CategoryId);
+                }
+                else
+                {
+                    // Fallback to API if cache miss
+                    series = await Plugin.Instance.StreamService.GetSeries(category.CategoryId, cancellationToken).ConfigureAwait(false);
+                    logger.LogInformation("GetAllSeriesFlattened got {Count} series from API for category {CategoryId}", series.Count(), category.CategoryId);
+                }
+
                 items.AddRange(series.Select(CreateChannelItemInfo));
             }
             catch (Exception ex)

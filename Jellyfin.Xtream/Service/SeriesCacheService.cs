@@ -150,6 +150,9 @@ public class SeriesCacheService : IDisposable
                     List<Series> seriesListItems = seriesList.ToList();
                     _logger?.LogInformation("  Found {SeriesCount} series in category {CategoryName}", seriesListItems.Count, category.CategoryName);
 
+                    // Cache the series list for this category
+                    _memoryCache.Set($"{cachePrefix}serieslist_{category.CategoryId}", seriesListItems, cacheOptions);
+
                     int seriesInCategory = 0;
                     foreach (Series series in seriesListItems)
                     {
@@ -325,6 +328,29 @@ public class SeriesCacheService : IDisposable
             if (_memoryCache.TryGetValue(cacheKey, out List<Episode>? episodes) && episodes != null)
             {
                 return episodes;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets cached series list for a category.
+    /// </summary>
+    /// <param name="categoryId">The category ID.</param>
+    /// <returns>Cached series list, or null if not available.</returns>
+    public IEnumerable<Series>? GetCachedSeriesList(int categoryId)
+    {
+        try
+        {
+            string cacheKey = $"{CachePrefix}serieslist_{categoryId}";
+            if (_memoryCache.TryGetValue(cacheKey, out List<Series>? seriesList) && seriesList != null)
+            {
+                return seriesList;
             }
 
             return null;

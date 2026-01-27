@@ -218,7 +218,8 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
             Status = status,
             StartTime = startTime,
             CompleteTime = completeTime,
-            IsCachePopulated = Plugin.Instance.SeriesCacheService.IsCachePopulated()
+            IsCachePopulated = Plugin.Instance.SeriesCacheService.IsCachePopulated(),
+            CacheDataVersion = Plugin.Instance.CacheDataVersion
         });
     }
 

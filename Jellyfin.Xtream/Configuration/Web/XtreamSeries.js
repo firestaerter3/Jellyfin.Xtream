@@ -140,9 +140,18 @@ export default function (view) {
 
     // Poll cache status every 2 seconds
     let statusPollInterval;
+    let lastCacheVersion = null;
     function updateCacheStatus() {
       Xtream.fetchJson('Xtream/SeriesCacheStatus')
         .then((status) => {
+          // Detect cache version change and reload page if version changed
+          if (lastCacheVersion !== null && status.CacheDataVersion && lastCacheVersion !== status.CacheDataVersion) {
+            console.log(`Cache version changed from ${lastCacheVersion} to ${status.CacheDataVersion}, reloading page to invalidate browser cache`);
+            window.location.reload();
+            return;
+          }
+          lastCacheVersion = status.CacheDataVersion;
+
           if (status.IsRefreshing || status.Progress > 0 || status.IsCachePopulated) {
             cacheStatusContainer.style.display = 'block';
             const progressPercent = Math.round(status.Progress * 100);
@@ -191,6 +200,31 @@ export default function (view) {
       view.querySelector('#XtreamSeriesForm').addEventListener('submit', (e) => {
         Dashboard.showLoadingMsg();
 
+        // Validate configuration before saving
+        let warnings = [];
+        if (visible.checked && flattenSeriesView.checked) {
+          // In flatten mode, check if any categories have series selected
+          let hasAnySelection = false;
+          for (let categoryId in data) {
+            if (data[categoryId] !== undefined) {
+              hasAnySelection = true;
+              break;
+            }
+          }
+          if (!hasAnySelection) {
+            warnings.push('Series visibility is enabled but no categories have series selected. Users will see an empty list.');
+          }
+        }
+
+        if (warnings.length > 0) {
+          let proceed = confirm('Configuration warnings:\n\n' + warnings.join('\n\n') + '\n\nDo you want to save anyway?');
+          if (!proceed) {
+            Dashboard.hideLoadingMsg();
+            e.preventDefault();
+            return false;
+          }
+        }
+
         ApiClient.getPluginConfiguration(pluginId).then((config) => {
           config.IsSeriesVisible = visible.checked;
           config.FlattenSeriesView = flattenSeriesView.checked;
@@ -203,6 +237,7 @@ export default function (view) {
           config.SeriesCacheExpirationMinutes = refreshMinutes;
 
           config.Series = data;
+          console.log('Saving series configuration:', JSON.stringify(data, null, 2));
           ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
             Dashboard.processPluginConfigurationUpdateResult(result);
           });
