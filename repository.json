@@ -8,84 +8,12 @@
     "owner": "Kevinjil",
     "versions": [
       {
-        "changelog": "Added graphical progress indicator for cache refresh:\n\n\u2728 **New Features:**\n- Progress bar and status display in Series configuration page\n- Scheduled task 'Refresh Xtream Series Cache' in Dashboard \u2192 Scheduled Tasks\n- Real-time progress updates (every 2 seconds)\n- API endpoint /Xtream/SeriesCacheStatus for programmatic access\n\n\ud83d\udcca **Progress Display:**\n- Shows percentage complete (0-100%)\n- Current status message with detailed counts\n- Color-coded status (blue = in progress, green = complete)\n- Start and completion timestamps\n\n\ud83c\udfaf **Usage:**\n- View progress in Plugins \u2192 Series configuration page\n- Or in Dashboard \u2192 Scheduled Tasks \u2192 'Refresh Xtream Series Cache'\n- Task can be triggered manually or scheduled",
-        "checksum": "c43e15c989f30ebc2736f8a7b092a159",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.3.0/jellyfin-xtream-flat-view_0.9.3.0.zip",
+        "changelog": "## v0.9.5.3 - Fix malformed JSON from Xtream API\n\n**Fixes:**\n- Handle cases where Xtream API returns JSON array instead of object for series data\n- Prevents cache failures for series with malformed API responses\n- Better error logging for JSON deserialization failures\n\n**Effect:**\n- Series that previously failed to cache now load successfully with empty data\n- Cache refresh completes without errors\n\n**Full Features in this fork:**\n- Flat Series View - show all series in single alphabetical list\n- Flat VOD View - show all movies in single alphabetical list  \n- Eager caching - pre-load all series data for instant navigation\n- Unicode pipe tag parsing - strip ┃NL┃ style tags from titles",
+        "checksum": "d6d4f13dfddbaaa65d08f6c63ab43a2c",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.5.3/jellyfin-xtream-flat-view_0.9.5.3.zip",
         "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-24T11:32:25Z",
-        "version": "0.9.3.0"
-      },
-      {
-        "changelog": "Added detailed progress logging for cache refresh. See real-time progress in Jellyfin logs showing categories, series, seasons, and episodes being cached.",
-        "checksum": "abb31028ad1d1642e77bc7adc8e5ca29",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.1/jellyfin-xtream-flat-view_0.9.2.1.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-24T11:15:53Z",
-        "version": "0.9.2.1"
-      },
-      {
-        "changelog": "**NEW: Pre-fetch and cache all series data upfront - No more lazy loading delays!**\n\n**Features:**\n- All series, seasons, and episodes are now cached when plugin loads or configuration changes\n- Navigation is instant - data loads from cache instead of making API calls on every page visit\n- Cache automatically refreshes when plugin configuration changes\n- **Configurable cache expiration time** (default: 60 minutes / 1 hour)\n- Users can adjust cache expiration in Series configuration page (1-1440 minutes)\n- Lower values = fresher data but more API calls\n- Higher values = fewer calls but potentially stale data\n\n**Fixes:**\n- Missing episodes in some series - Added fallback to search all episodes by Season property when dictionary lookup fails\n- This handles cases where episodes might be stored under different season ID keys in the API response\n\n**Technical:**\n- New SeriesCacheService handles all caching logic\n- Cache runs in background on plugin initialization (doesn't block startup)\n- Falls back to API calls if cache is unavailable\n- Cache expires based on configured time or refreshes on config change",
-        "checksum": "4661450fde646e5bb660a297755fb39d",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.2.0/jellyfin-xtream-flat-view_0.9.2.0.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-24T10:32:46Z",
-        "version": "0.9.2.0"
-      },
-      {
-        "changelog": "FIXED: Missing episodes in some series - Added fallback to search all episodes by Season property when dictionary lookup fails. This handles cases where episodes might be stored under different season ID keys in the API response.",
-        "checksum": "9cb8a6cea96427320a3b8d1ac858ffe6",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.5/jellyfin-xtream-flat-view_0.9.1.5.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-24T09:32:21Z",
-        "version": "0.9.1.5"
-      },
-      {
-        "changelog": "## What's Changed\n\n### Bug Fixes\n- **Fix tag parsing for Unicode pipe characters** - IPTV providers often use Unicode box-drawing characters (\u2503, \u2502, \uff5c) instead of ASCII pipe (|) for country tags like `\u2503NL\u2503`. The `ParseName` function now correctly strips these tags from series and movie titles.\n\n### Supported tag formats\n- `[TAG]` - Square brackets\n- `|TAG|` - ASCII pipe\n- `\u2503TAG\u2503` - Box drawing heavy vertical (U+2503)\n- `\u2502TAG\u2502` - Box drawing light vertical (U+2502)\n- `\uff5cTAG\uff5c` - Fullwidth vertical line (U+FF5C)\n- Spaces inside pipes: `| TAG |`, `\u2503 TAG \u2503`\n\n**Full Changelog**: https://github.com/rolandb5/Jellyfin.Xtream/compare/v0.9.1.3...v0.9.1.4",
-        "checksum": "b7b6c04ea53a8ed52812fa5555565e0b",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.4/jellyfin-xtream-flat-view_0.9.1.4.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-24T07:00:50Z",
-        "version": "0.9.1.4"
-      },
-      {
-        "changelog": "Added explicit check for non-empty episodes collection. This ensures episodes are only returned when they actually exist.",
-        "checksum": "5e00a0be5fa1b3a94167c45c4ff4ff68",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.3-flat-view/jellyfin-xtream-flat-view_0.9.1.3.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-22T13:17:20Z",
-        "version": "0.9.1.3"
-      },
-      {
-        "changelog": "Simplified GetEpisodes to use TryGetValue pattern correctly. This should fix episodes not appearing when clicking on seasons.",
-        "checksum": "770bbb2456cd0674162783b133361837",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.2-flat-view/jellyfin-xtream-flat-view_0.9.1.2.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-22T12:51:26Z",
-        "version": "0.9.1.2"
-      },
-      {
-        "changelog": "Fixed missing episodes in series view by adding configuration check and safe season lookup in GetEpisodes method.",
-        "checksum": "1116b44bce378aa3b243b6541765c7ea",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1.1-flat-view/jellyfin-xtream-flat-view_0.9.1.1.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-22T12:34:34Z",
-        "version": "0.9.1.1"
-      },
-      {
-        "changelog": "## New Features: Flat Series & VOD View\n\nThis release adds the ability to display all series and movies directly without category folders.\n\n### Features\n- \u2705 Flat series view option in configuration\n- \u2705 Flat VOD view option in configuration\n- \u2705 Shows all series/movies directly from selected categories\n- \u2705 Maintains hierarchy (seasons/episodes for series)\n- \u2705 Backward compatible (opt-in features)\n\n### How to Use\n1. Install the plugin from the repository\n2. Go to Plugins \u2192 Xtream \u2192 Series tab\n   - Enable \"Flatten Series View\" checkbox\n3. Go to Plugins \u2192 Xtream \u2192 Video On-Demand tab\n   - Enable \"Flatten VOD View\" checkbox\n4. Save and refresh your library\n\n### Changes\n- Added FlattenSeriesView configuration property\n- Added FlattenVodView configuration property\n- Modified SeriesChannel to support flat view\n- Modified VodChannel to support flat view\n- Updated UI with checkboxes for both features\n- Version bumped to 0.9.1.0",
-        "checksum": "20847c544567be107915dc39bc71a995",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.1-flat-view/jellyfin-xtream-flat-view_0.9.1.0.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-21T23:08:59Z",
-        "version": "0.9.1.0"
-      },
-      {
-        "changelog": "## New Feature: Flat Series View\n\nThis release adds the ability to display all series directly without category folders.\n\n### Features\n- \u2705 Flat series view option in configuration\n- \u2705 Shows all series directly from selected categories\n- \u2705 Maintains season/episode hierarchy\n- \u2705 Backward compatible (opt-in feature)\n\n### How to Use\n1. Install the plugin from the repository\n2. Go to Plugins \u2192 Xtream \u2192 Series tab\n3. Enable \"Flatten Series View\" checkbox\n4. Save and refresh your library\n\n### Changes\n- Added FlattenSeriesView configuration property\n- Modified SeriesChannel to support flat view\n- Updated UI with checkbox control\n- Version bumped to 0.9.0.0",
-        "checksum": "8c6844018de5fd1ec60966a25b6aba22",
-        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.0-flat-view/jellyfin-xtream-flat-view_0.9.0.0.zip",
-        "targetAbi": "10.11.0.0",
-        "timestamp": "2026-01-21T22:40:07Z",
-        "version": "0.9.0.0"
+        "timestamp": "2026-01-27T15:13:53Z",
+        "version": "0.9.5.3"
       }
     ]
   }
