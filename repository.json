@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "## Delta-Based Database Population\n\nThis release dramatically improves database population performance by using delta-based detection.\n\n### Performance Improvements\n- **~300x faster** for unchanged libraries (~30 min → ~6 seconds)\n- Delta-based detection using ExternalId (channel GUID) matching\n- Fast path when database is fully populated (>95% threshold)\n- Verification samples first 5 series to confirm children exist\n- Parallel processing (5 concurrent) with 50ms throttling for new items\n- Robust error handling for Jellyfin channel API edge cases\n\n### Technical Details\n- New series are still fully populated with seasons and episodes\n- Uses `StreamService.ToGuid()` for accurate series identification\n- Handles `ArgumentOutOfRangeException` from Jellyfin's channel API gracefully",
+        "checksum": "9a81bc252e1b9495b5925b0bee946a6d",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.14.0/jellyfin-xtream-flat-view_0.9.14.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-29T11:27:17Z",
+        "version": "0.9.14.0"
+      },
+      {
         "changelog": "## Title Override Map (replaces Language Booster)\n\n**NEW:**\n- Title Override Map — map series titles directly to TVDb IDs for guaranteed artwork matches\n- Direct TVDb ID lookup bypasses search ambiguity entirely\n\n**CHANGED:**\n- Replaced Language Booster (presets, word translations, article/and substitution) with simple title overrides\n\n**REMOVED:**\n- Language preset system, 10 language JSON files, /Xtream/Languages API endpoints\n\n**KEPT:**\n- Name-based TVDb search for series without overrides\n- Language indicator stripping (e.g., `(NL Gesproken)` removed before search)\n\n**EFFECT:**\n- Simpler configuration — just paste `SeriesTitle=TVDbID` for unmatched series\n- Find TVDb IDs at thetvdb.com (number in the series URL)\n\n## Installation\n\nAdd this repository URL to Jellyfin's plugin repositories:\n```\nhttps://rolandb5.github.io/Jellyfin.Xtream/repository.json\n```\n\nThe plugin will be automatically built and uploaded by GitHub Actions.",
         "checksum": "ae98d0739f5162300beed93d9ff10049",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.11.0/jellyfin-xtream-flat-view_0.9.11.0.zip",
