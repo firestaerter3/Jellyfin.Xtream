@@ -83,15 +83,17 @@ export default function (view) {
       refreshCacheBtn.disabled = true;
       refreshCacheBtn.querySelector('span').textContent = 'Starting...';
 
-      fetch(ApiClient.getUrl('Xtream/SeriesCacheRefresh'), {
-        method: 'POST',
-        headers: ApiClient.defaultRequestHeaders()
+      ApiClient.fetch({
+        url: ApiClient.getUrl('Xtream/SeriesCacheRefresh'),
+        type: 'POST',
+        dataType: 'json'
       })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Server returned ' + response.status);
+        .then(result => {
+          // Handle both Response object and parsed JSON
+          if (result && typeof result.json === 'function') {
+            return result.json();
           }
-          return response.json();
+          return result;
         })
         .then(result => {
           if (result.Success) {
