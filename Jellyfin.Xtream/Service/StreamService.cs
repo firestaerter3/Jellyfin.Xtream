@@ -293,12 +293,38 @@ public partial class StreamService(IXtreamClient xtreamClient)
     {
         SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, seriesId, cancellationToken).ConfigureAwait(false);
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
-        if (series.Episodes == null || !series.Episodes.TryGetValue(seasonId, out var episodes))
+
+        List<Tuple<SeriesStreamInfo, Season?, Episode>> result = new();
+
+        if (series.Episodes != null)
         {
-            return new List<Tuple<SeriesStreamInfo, Season?, Episode>>();
+            // First try to get episodes from dictionary by seasonId key
+            if (series.Episodes.TryGetValue(seasonId, out var episodes) && episodes != null && episodes.Count > 0)
+            {
+                foreach (var episode in episodes)
+                {
+                    result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                }
+            }
+
+            // Fallback: search all episodes and filter by episode.Season property
+            // This handles cases where episodes are stored under a different dictionary key
+            foreach (var kvp in series.Episodes)
+            {
+                if (kvp.Value != null && kvp.Key != seasonId)
+                {
+                    foreach (var episode in kvp.Value)
+                    {
+                        if (episode.Season == seasonId && !result.Any(r => r.Item3.EpisodeId == episode.EpisodeId))
+                        {
+                            result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                        }
+                    }
+                }
+            }
         }
 
-        return episodes.Select((Episode episode) => new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+        return result;
     }
 
     private static void StoreBytes(byte[] dst, int offset, int i)
