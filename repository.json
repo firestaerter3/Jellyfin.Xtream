@@ -1,10 +1,10 @@
 [
   {
     "category": "LiveTV",
-    "description": "Stream Live IPTV, Video On-Demand, and Series from an Xtream-compatible server using this plugin. Includes flat series view and flat VOD view features to show all content directly without category folders.\n",
+    "description": "Stream Live IPTV, Video On-Demand, and Series from an Xtream-compatible server using this plugin.\n",
     "guid": "5d774c35-8567-46d3-a950-9bb8227a0c5d",
-    "name": "Jellyfin Xtream (Flat View)",
-    "overview": "Stream content from an Xtream-compatible server with flat series and VOD view.",
+    "name": "Jellyfin Xtream",
+    "overview": "Stream content from an Xtream-compatible server.",
     "owner": "Kevinjil",
     "versions": [
       {
@@ -70,6 +70,14 @@
         "targetAbi": "10.11.0.0",
         "timestamp": "2026-01-27T15:13:53Z",
         "version": "0.9.5.3"
+      },
+      {
+        "changelog": "## What's New\n\nThis release adds caching support for VOD/Movies, mirroring the existing Series caching feature.\n\n### Features\n- **VOD Caching**: Pre-fetch all movie data at startup for instant navigation\n- **TMDB Artwork**: Automatically replaces provider images with high-quality TMDB artwork\n- **Title Override Map**: Manually map movie titles to TMDB IDs when automatic lookup fails\n- **Delta Sync**: Efficient database population\n- **Cache UI**: Full control panel with refresh button, progress display, and settings\n\n### How to Use\n1. Go to Plugin Settings → Video On-Demand tab\n2. Enable \"Enable VOD Caching\" \n3. (Optional) Enable \"Enable TMDB Artwork Lookup\" for better artwork\n4. Click \"Refresh Now\" or wait for automatic refresh\n5. Browse VOD - should be instant!\n\n### Configuration\n| Setting | Description |\n|---------|-------------|\n| Enable VOD Caching | Pre-fetch movie data for faster browsing |\n| Refresh Frequency | How often to auto-refresh (default: 600 min) |\n| TMDB Artwork Lookup | Fetch artwork from TMDB |\n| Title Overrides | Map titles to TMDB IDs for guaranteed matches |\n\n### Full Changelog\nhttps://github.com/rolandb5/Jellyfin.Xtream/compare/v0.8.1...v0.9.0",
+        "checksum": "a8fd8ef5daf4a8d10cb200c366608e2e",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.0/jellyfin-xtream_0.8.1.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-30T20:55:52Z",
+        "version": "0.8.1.0"
       }
     ]
   }
