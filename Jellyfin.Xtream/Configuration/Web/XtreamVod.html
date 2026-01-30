@@ -24,6 +24,84 @@
             When enabled, all movies from selected categories appear directly in the library without category folders.
           </div>
         </div>
+        <div class="sectionTitleContainer flex align-items-center" style="margin-top: 1em;">
+          <h2 class="sectionTitle">Cache Settings</h2>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label>
+            <input is="emby-checkbox" id="EnableVodCaching" name="EnableVodCaching" type="checkbox" />
+            <span>Enable VOD Caching</span>
+          </label>
+          <div class="fieldDescription">
+            Pre-fetch and cache all VOD movie data for faster navigation. When disabled, data is fetched on-demand from the Xtream server.
+          </div>
+        </div>
+        <div id="VodCacheOptionsContainer" style="display: none;">
+          <div class="inputContainer">
+            <label class="inputLabel" for="VodCacheRefreshMinutes">Refresh Frequency (minutes)</label>
+            <input is="emby-input" type="number" id="VodCacheRefreshMinutes" name="VodCacheRefreshMinutes" min="10" max="1380" />
+            <div class="fieldDescription">
+              How often to automatically refresh the cache (default: 600 minutes / 10 hours, min: 10, max: 1380 / 23 hours). Maximum is 23 hours to ensure refresh happens before 24-hour cache expiration. This setting syncs with Dashboard > Scheduled Tasks.
+            </div>
+          </div>
+          <div class="inputContainer">
+            <label class="inputLabel" for="VodCacheRefreshParallelism">Cache Refresh Parallelism: <span id="VodCacheParallelismValue">3</span></label>
+            <input type="range" id="VodCacheRefreshParallelism" name="VodCacheRefreshParallelism" min="1" max="10" value="3" style="width: 100%;" />
+            <div class="fieldDescription">
+              Number of concurrent API requests during cache refresh. Lower values (1-2) are safer for strict providers. Higher values (5-10) are faster but may trigger rate limiting. Default: 3 (recommended). Shared with Series cache settings.
+            </div>
+          </div>
+          <div class="inputContainer">
+            <label class="inputLabel" for="VodCacheRefreshMinDelayMs">Request Throttle Delay (ms): <span id="VodCacheMinDelayValue">100</span></label>
+            <input type="range" id="VodCacheRefreshMinDelayMs" name="VodCacheRefreshMinDelayMs" min="0" max="500" step="25" value="100" style="width: 100%;" />
+            <div class="fieldDescription">
+              Minimum delay between API requests to avoid rate limiting. 0 = no throttling, 100 = ~10 req/sec, 500 = ~2 req/sec. Default: 100ms. Shared with Series cache settings.
+            </div>
+          </div>
+          <div class="inputContainer" style="display: flex; gap: 10px; margin-bottom: 1em;">
+            <button is="emby-button" type="button" id="VodRefreshCacheBtn" class="raised emby-button">
+              <span>Refresh Now</span>
+            </button>
+            <button is="emby-button" type="button" id="VodClearCacheBtn" class="raised emby-button" style="background-color: #c25;"
+              title="Clears all cached VOD data. Next refresh will fetch everything from scratch.">
+              <span>Clear Cache</span>
+            </button>
+          </div>
+          <div class="inputContainer" id="VodCacheStatusContainer" style="display: none;">
+            <label class="inputLabel">Cache Refresh Status</label>
+            <div id="VodCacheProgressBar" style="width: 100%; height: 20px; background-color: #2a2a2a; border-radius: 4px; overflow: hidden; margin: 8px 0;">
+              <div id="VodCacheProgressFill" style="height: 100%; background-color: #00a4dc; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <div id="VodCacheStatusText" style="color: #a0a0a0; font-size: 0.9em; margin-top: 4px;">Idle</div>
+            <div class="fieldDescription">
+              Current cache refresh progress. You can also view this in Dashboard > Scheduled Tasks > "Refresh Xtream VOD Cache".
+            </div>
+          </div>
+        </div>
+        <div class="sectionTitleContainer flex align-items-center" style="margin-top: 1em;">
+          <h2 class="sectionTitle">Artwork Injector</h2>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label>
+            <input is="emby-checkbox" id="UseTmdbForVodMetadata" name="UseTmdbForVodMetadata" type="checkbox" checked />
+            <span>Enable TMDB Artwork Lookup</span>
+          </label>
+          <div class="fieldDescription">
+            Fetch movie artwork from TMDB using intelligent title matching. Falls back to Xtream provider images if no match is found.
+          </div>
+        </div>
+        <div id="TmdbOptionsContainer" style="display: none;">
+          <div class="inputContainer">
+            <label class="inputLabel" for="TmdbTitleOverrides">Title Overrides (one per line)</label>
+            <textarea is="emby-textarea" id="TmdbTitleOverrides" name="TmdbTitleOverrides" rows="6"
+              placeholder="Some Movie Title=12345&#10;Another Movie=67890" style="width: 100%; font-family: monospace;"></textarea>
+            <div class="fieldDescription">
+              Map movie titles to TMDB IDs for guaranteed artwork matches.
+              Format: LocalTitle=TmdbID (one per line).
+              Find IDs at themoviedb.org - the number in the movie URL.
+            </div>
+          </div>
+        </div>
         <div class="sectionTitleContainer flex align-items-center">
           <h2 class="sectionTitle">Video On-demand selection</h2>
         </div>

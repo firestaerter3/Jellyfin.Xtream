@@ -133,12 +133,24 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
                 stream.ContainerExtension)
         ];
 
+        // Try to get TMDB image from cache if caching is enabled
+        string? imageUrl = stream.StreamIcon;
+        if (Plugin.Instance.Configuration.EnableVodCaching &&
+            Plugin.Instance.Configuration.UseTmdbForVodMetadata)
+        {
+            string? tmdbImageUrl = Plugin.Instance.VodCacheService.GetCachedTmdbImageUrl(stream.StreamId);
+            if (!string.IsNullOrEmpty(tmdbImageUrl))
+            {
+                imageUrl = tmdbImageUrl;
+            }
+        }
+
         ChannelItemInfo result = new ChannelItemInfo()
         {
             ContentType = ChannelMediaContentType.Movie,
             DateCreated = DateTimeOffset.FromUnixTimeSeconds(added).DateTime,
             Id = $"{StreamService.StreamPrefix}{stream.StreamId}",
-            ImageUrl = stream.StreamIcon,
+            ImageUrl = imageUrl,
             IsLiveStream = false,
             MediaSources = sources,
             MediaType = ChannelMediaType.Video,
@@ -153,7 +165,20 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
 
     private async Task<ChannelItemResult> GetCategories(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+        IEnumerable<Category>? categories = null;
+
+        // Try cache first if caching is enabled
+        if (Plugin.Instance.Configuration.EnableVodCaching)
+        {
+            categories = Plugin.Instance.VodCacheService.GetCachedCategories();
+        }
+
+        // Fallback to API if cache miss
+        if (categories == null)
+        {
+            categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+        }
+
         List<ChannelItemInfo> items = new List<ChannelItemInfo>(
             categories.Select((Category category) => StreamService.CreateChannelItemInfo(StreamService.VodCategoryPrefix, category)));
         return new()
@@ -165,13 +190,39 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
 
     private async Task<ChannelItemResult> GetAllStreamsFlattened(CancellationToken cancellationToken)
     {
-        IEnumerable<Category> categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+        IEnumerable<Category>? categories = null;
+
+        // Try cache first if caching is enabled
+        if (Plugin.Instance.Configuration.EnableVodCaching)
+        {
+            categories = Plugin.Instance.VodCacheService.GetCachedCategories();
+        }
+
+        // Fallback to API if cache miss
+        if (categories == null)
+        {
+            categories = await Plugin.Instance.StreamService.GetVodCategories(cancellationToken).ConfigureAwait(false);
+        }
+
         List<ChannelItemInfo> items = new();
 
         // Get all streams from all selected categories
         foreach (Category category in categories)
         {
-            IEnumerable<StreamInfo> streams = await Plugin.Instance.StreamService.GetVodStreams(category.CategoryId, cancellationToken).ConfigureAwait(false);
+            IEnumerable<StreamInfo>? streams = null;
+
+            // Try cache first if caching is enabled
+            if (Plugin.Instance.Configuration.EnableVodCaching)
+            {
+                streams = Plugin.Instance.VodCacheService.GetCachedMovies(category.CategoryId);
+            }
+
+            // Fallback to API if cache miss
+            if (streams == null)
+            {
+                streams = await Plugin.Instance.StreamService.GetVodStreams(category.CategoryId, cancellationToken).ConfigureAwait(false);
+            }
+
             items.AddRange(await Task.WhenAll(streams.Select(CreateChannelItemInfo)).ConfigureAwait(false));
         }
 
@@ -187,7 +238,20 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
 
     private async Task<ChannelItemResult> GetStreams(int categoryId, CancellationToken cancellationToken)
     {
-        IEnumerable<StreamInfo> streams = await Plugin.Instance.StreamService.GetVodStreams(categoryId, cancellationToken).ConfigureAwait(false);
+        IEnumerable<StreamInfo>? streams = null;
+
+        // Try cache first if caching is enabled
+        if (Plugin.Instance.Configuration.EnableVodCaching)
+        {
+            streams = Plugin.Instance.VodCacheService.GetCachedMovies(categoryId);
+        }
+
+        // Fallback to API if cache miss
+        if (streams == null)
+        {
+            streams = await Plugin.Instance.StreamService.GetVodStreams(categoryId, cancellationToken).ConfigureAwait(false);
+        }
+
         List<ChannelItemInfo> items = [.. await Task.WhenAll(streams.Select(CreateChannelItemInfo)).ConfigureAwait(false)];
         ChannelItemResult result = new ChannelItemResult()
         {

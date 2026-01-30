@@ -278,4 +278,80 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
 
         return Ok(new { Success = true, Message = message });
     }
+
+    /// <summary>
+    /// Get the current VOD cache refresh status.
+    /// </summary>
+    /// <returns>VOD cache status information.</returns>
+    [Authorize(Policy = "RequiresElevation")]
+    [HttpGet("VodCacheStatus")]
+    public ActionResult<object> GetVodCacheStatus()
+    {
+        var (isRefreshing, progress, status, startTime, completeTime) = Plugin.Instance.VodCacheService.GetStatus();
+        return Ok(new
+        {
+            IsRefreshing = isRefreshing,
+            Progress = progress,
+            Status = status,
+            StartTime = startTime,
+            CompleteTime = completeTime,
+            IsCachePopulated = Plugin.Instance.VodCacheService.IsCachePopulated()
+        });
+    }
+
+    /// <summary>
+    /// Trigger an immediate VOD cache refresh.
+    /// </summary>
+    /// <returns>Status of the refresh operation.</returns>
+    [Authorize(Policy = "RequiresElevation")]
+    [HttpPost("VodCacheRefresh")]
+    public ActionResult<object> TriggerVodCacheRefresh()
+    {
+        var (isRefreshing, _, _, _, _) = Plugin.Instance.VodCacheService.GetStatus();
+        if (isRefreshing)
+        {
+            return Ok(new { Success = false, Message = "VOD cache refresh already in progress" });
+        }
+
+        // Start refresh in background with no cancellation token
+        _ = Plugin.Instance.VodCacheService.RefreshCacheAsync(null, CancellationToken.None);
+
+        return Ok(new { Success = true, Message = "VOD cache refresh started" });
+    }
+
+    /// <summary>
+    /// Clear the VOD cache completely.
+    /// </summary>
+    /// <returns>Status of the clear operation.</returns>
+    [Authorize(Policy = "RequiresElevation")]
+    [HttpPost("VodCacheClear")]
+    public ActionResult<object> ClearVodCache()
+    {
+        var (isRefreshing, _, _, _, _) = Plugin.Instance.VodCacheService.GetStatus();
+
+        string message = "VOD cache cleared successfully.";
+        if (isRefreshing)
+        {
+            // Cancel the running refresh before clearing (happens asynchronously)
+            Plugin.Instance.VodCacheService.CancelRefresh();
+            message = "VOD cache cleared. Refresh was cancelled.";
+        }
+
+        Plugin.Instance.VodCacheService.InvalidateCache();
+
+        // Trigger Jellyfin to refresh channel items
+        try
+        {
+            Plugin.Instance.TaskService.CancelIfRunningAndQueue(
+                "Jellyfin.LiveTv",
+                "Jellyfin.LiveTv.Channels.RefreshChannelsScheduledTask");
+            message += " Jellyfin channel refresh triggered to clean up jellyfin.db.";
+        }
+        catch
+        {
+            message += " Warning: Could not trigger Jellyfin cleanup.";
+        }
+
+        return Ok(new { Success = true, Message = message });
+    }
 }

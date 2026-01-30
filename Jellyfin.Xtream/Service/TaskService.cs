@@ -59,7 +59,36 @@ public class TaskService(ITaskManager taskManager)
     /// Updates the interval trigger for the Xtream Series Cache Refresh task.
     /// </summary>
     /// <param name="intervalMinutes">The new interval in minutes.</param>
+    public void UpdateSeriesCacheRefreshInterval(int intervalMinutes)
+    {
+        UpdateTaskInterval("Refresh Xtream Series Cache", intervalMinutes);
+    }
+
+    /// <summary>
+    /// Updates the interval trigger for the Xtream Series Cache Refresh task.
+    /// Alias for UpdateSeriesCacheRefreshInterval for backward compatibility.
+    /// </summary>
+    /// <param name="intervalMinutes">The new interval in minutes.</param>
     public void UpdateCacheRefreshInterval(int intervalMinutes)
+    {
+        UpdateSeriesCacheRefreshInterval(intervalMinutes);
+    }
+
+    /// <summary>
+    /// Updates the interval trigger for the Xtream VOD Cache Refresh task.
+    /// </summary>
+    /// <param name="intervalMinutes">The new interval in minutes.</param>
+    public void UpdateVodCacheRefreshInterval(int intervalMinutes)
+    {
+        UpdateTaskInterval("Refresh Xtream VOD Cache", intervalMinutes);
+    }
+
+    /// <summary>
+    /// Updates the interval trigger for a scheduled task by name.
+    /// </summary>
+    /// <param name="taskName">The name of the task.</param>
+    /// <param name="intervalMinutes">The new interval in minutes.</param>
+    private void UpdateTaskInterval(string taskName, int intervalMinutes)
     {
         if (intervalMinutes < 10)
         {
@@ -67,7 +96,7 @@ public class TaskService(ITaskManager taskManager)
         }
 
         var task = _taskManager.ScheduledTasks
-            .FirstOrDefault(t => t.Name == "Refresh Xtream Series Cache");
+            .FirstOrDefault(t => t.Name == taskName);
 
         if (task == null)
         {

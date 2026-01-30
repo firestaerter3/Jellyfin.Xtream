@@ -42,5 +42,6 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<IChannel, VodChannel>();
         serviceCollection.AddSingleton<IPreRefreshProvider, XtreamVodProvider>();
         serviceCollection.AddSingleton<IScheduledTask, SeriesCacheRefreshTask>();
+        serviceCollection.AddSingleton<IScheduledTask, VodCacheRefreshTask>();
     }
 }

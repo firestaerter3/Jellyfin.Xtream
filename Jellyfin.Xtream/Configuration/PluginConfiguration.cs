@@ -152,6 +152,34 @@ public class PluginConfiguration : BasePluginConfiguration
     public string TvdbTitleOverrides { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets a value indicating whether VOD caching is enabled.
+    /// When enabled, VOD movie data is pre-fetched and cached for faster navigation.
+    /// </summary>
+    public bool EnableVodCaching { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the cache expiration time in minutes for VOD data.
+    /// Default is 600 minutes (10 hours). Data is refreshed when this time expires or when configuration changes.
+    /// Maximum is 1380 minutes (23 hours) to ensure refresh happens before 24-hour cache safety expiration.
+    /// </summary>
+    public int VodCacheExpirationMinutes { get; set; } = 600;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to use TMDB for VOD metadata and images.
+    /// When enabled, movies are looked up on TMDB to get proper artwork and metadata.
+    /// This works regardless of whether the Xtream provider blocks image access.
+    /// Default is true.
+    /// </summary>
+    public bool UseTmdbForVodMetadata { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets title-to-TMDB-ID overrides for movies that can't be found by name search.
+    /// Format: one mapping per line, "MovieTitle=TmdbID".
+    /// Example: "Some Movie=12345" maps that title directly to TMDB ID 12345.
+    /// </summary>
+    public string TmdbTitleOverrides { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];
@@ -172,7 +200,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public SerializableDictionary<int, ChannelOverrides> LiveTvOverrides { get; set; } = [];
 
     /// <summary>
-    /// Gets a hash code based only on cache-relevant configuration.
+    /// Gets a hash code based only on cache-relevant configuration for Series.
     /// This excludes settings like refresh frequency that don't affect cached data.
     /// </summary>
     /// <returns>Hash code for cache invalidation purposes.</returns>
@@ -187,6 +215,33 @@ public class PluginConfiguration : BasePluginConfiguration
 
         // Include series selections
         foreach (var kvp in Series)
+        {
+            hash = HashCode.Combine(hash, kvp.Key);
+            foreach (var val in kvp.Value)
+            {
+                hash = HashCode.Combine(hash, val);
+            }
+        }
+
+        return hash;
+    }
+
+    /// <summary>
+    /// Gets a hash code based only on cache-relevant configuration for VOD.
+    /// This excludes settings like refresh frequency that don't affect cached data.
+    /// </summary>
+    /// <returns>Hash code for VOD cache invalidation purposes.</returns>
+    public int GetVodCacheRelevantHash()
+    {
+        // Only include settings that affect what VOD data is cached:
+        // - Credentials (determines which server/account)
+        // - VOD selections (determines which movies to cache)
+        // - FlattenVodView (affects data structure)
+        int hash = HashCode.Combine(BaseUrl, Username, Password, FlattenVodView);
+        hash = HashCode.Combine(hash, UseTmdbForVodMetadata, TmdbTitleOverrides);
+
+        // Include VOD selections
+        foreach (var kvp in Vod)
         {
             hash = HashCode.Combine(hash, kvp.Key);
             foreach (var val in kvp.Value)

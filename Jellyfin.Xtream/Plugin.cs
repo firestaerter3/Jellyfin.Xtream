@@ -93,7 +93,15 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             providerManager,
             serverConfigManager);
 
-        // Start cache refresh in background (don't await - let it run async)
+        VodCacheService = new Service.VodCacheService(
+            StreamService,
+            memoryCache,
+            failureTrackingService,
+            loggerFactory.CreateLogger<Service.VodCacheService>(),
+            providerManager,
+            serverConfigManager);
+
+        // Start series cache refresh in background (don't await - let it run async)
         // Only refresh if caching is enabled and credentials are configured
         if (Configuration.EnableSeriesCaching &&
             !string.IsNullOrEmpty(Configuration.BaseUrl) &&
@@ -114,11 +122,39 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         }
         else if (!Configuration.EnableSeriesCaching)
         {
-            _logger.LogInformation("Skipping initial cache refresh - caching is disabled");
+            _logger.LogInformation("Skipping initial series cache refresh - caching is disabled");
         }
         else
         {
-            _logger.LogInformation("Skipping initial cache refresh - credentials not configured");
+            _logger.LogInformation("Skipping initial series cache refresh - credentials not configured");
+        }
+
+        // Start VOD cache refresh in background (don't await - let it run async)
+        // Only refresh if caching is enabled and credentials are configured
+        if (Configuration.EnableVodCaching &&
+            !string.IsNullOrEmpty(Configuration.BaseUrl) &&
+            Configuration.BaseUrl != "https://example.com" &&
+            !string.IsNullOrEmpty(Configuration.Username))
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await VodCacheService.RefreshCacheAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to initialize VOD cache");
+                }
+            });
+        }
+        else if (!Configuration.EnableVodCaching)
+        {
+            _logger.LogInformation("Skipping initial VOD cache refresh - caching is disabled");
+        }
+        else
+        {
+            _logger.LogInformation("Skipping initial VOD cache refresh - credentials not configured");
         }
     }
 
@@ -143,6 +179,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// This excludes settings like refresh frequency that don't affect cached data.
     /// </summary>
     public string CacheDataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetCacheRelevantHash();
+
+    /// <summary>
+    /// Gets the VOD cache-specific data version that only changes when VOD cache-relevant settings change.
+    /// This excludes settings like refresh frequency that don't affect cached data.
+    /// </summary>
+    public string VodCacheDataVersion => Assembly.GetCallingAssembly().GetName().Version?.ToString() + Configuration.GetVodCacheRelevantHash();
 
     /// <summary>
     /// Gets the current plugin instance.
@@ -175,6 +217,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the series cache service instance.
     /// </summary>
     public Service.SeriesCacheService SeriesCacheService { get; init; }
+
+    /// <summary>
+    /// Gets the VOD cache service instance.
+    /// </summary>
+    public Service.VodCacheService VodCacheService { get; init; }
 
     private static PluginPageInfo CreateStatic(string name) => new()
     {
@@ -219,10 +266,16 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         // Update scheduled task interval to match plugin configuration
         if (configuration is PluginConfiguration pluginConfig)
         {
-            int refreshMinutes = pluginConfig.SeriesCacheExpirationMinutes;
-            if (refreshMinutes >= 10)
+            int seriesRefreshMinutes = pluginConfig.SeriesCacheExpirationMinutes;
+            if (seriesRefreshMinutes >= 10)
             {
-                TaskService.UpdateCacheRefreshInterval(refreshMinutes);
+                TaskService.UpdateSeriesCacheRefreshInterval(seriesRefreshMinutes);
+            }
+
+            int vodRefreshMinutes = pluginConfig.VodCacheExpirationMinutes;
+            if (vodRefreshMinutes >= 10)
+            {
+                TaskService.UpdateVodCacheRefreshInterval(vodRefreshMinutes);
             }
         }
 
@@ -254,6 +307,36 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             // Clear cache when caching is disabled
             SeriesCacheService.InvalidateCache();
+        }
+
+        // Refresh VOD cache in background when configuration changes
+        // Only refresh if caching is enabled and credentials are configured
+        if (Configuration.EnableVodCaching &&
+            !string.IsNullOrEmpty(Configuration.BaseUrl) &&
+            Configuration.BaseUrl != "https://example.com" &&
+            !string.IsNullOrEmpty(Configuration.Username))
+        {
+            // Cancel any running refresh so the new one can start with updated settings
+            VodCacheService.CancelRefresh();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Small delay to allow cancellation to propagate
+                    await Task.Delay(500).ConfigureAwait(false);
+                    await VodCacheService.RefreshCacheAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to refresh VOD cache after configuration update");
+                }
+            });
+        }
+        else if (!Configuration.EnableVodCaching)
+        {
+            // Clear cache when caching is disabled
+            VodCacheService.InvalidateCache();
         }
 
         // Force a refresh of TV guide on configuration update.
