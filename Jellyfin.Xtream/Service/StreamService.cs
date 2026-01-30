@@ -27,6 +27,7 @@ using MediaBrowser.Controller.Channels;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Xtream.Service;
 
@@ -34,7 +35,8 @@ namespace Jellyfin.Xtream.Service;
 /// A service for dealing with stream information.
 /// </summary>
 /// <param name="xtreamClient">Instance of the <see cref="IXtreamClient"/> interface.</param>
-public partial class StreamService(IXtreamClient xtreamClient)
+/// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
+public partial class StreamService(IXtreamClient xtreamClient, ILogger<StreamService> logger)
 {
     /// <summary>
     /// The id prefix for VOD category channel items.
@@ -147,7 +149,21 @@ public partial class StreamService(IXtreamClient xtreamClient)
 
     private bool IsConfigured(SerializableDictionary<int, HashSet<int>> config, int category, int id)
     {
-        return config.TryGetValue(category, out var values) && (values.Count == 0 || values.Contains(id));
+        if (!config.TryGetValue(category, out var values))
+        {
+            logger.LogDebug("IsConfigured: Category {Category} not found in config for series {SeriesId}", category, id);
+            return false;
+        }
+
+        bool isAllowed = values.Count == 0 || values.Contains(id);
+        logger.LogDebug(
+            "IsConfigured: Series {SeriesId} in category {Category} - allowed={Allowed} (configCount={Count})",
+            id,
+            category,
+            isAllowed,
+            values.Count);
+
+        return isAllowed;
     }
 
     /// <summary>
@@ -250,13 +266,50 @@ public partial class StreamService(IXtreamClient xtreamClient)
     /// <returns>IAsyncEnumerable{StreamInfo}.</returns>
     public async Task<IEnumerable<Series>> GetSeries(int categoryId, CancellationToken cancellationToken)
     {
+        // Log all configured series categories for debugging
+        var configuredCategories = Plugin.Instance.Configuration.Series.Keys.ToList();
+        logger.LogInformation(
+            "GetSeries called for category {CategoryId}. Configured categories: [{Categories}]",
+            categoryId,
+            string.Join(", ", configuredCategories));
+
         if (!Plugin.Instance.Configuration.Series.ContainsKey(categoryId))
         {
+            logger.LogWarning("GetSeries: Category {CategoryId} NOT in configuration, returning empty list", categoryId);
             return new List<Series>();
         }
 
+        // Log the configured series IDs for this category
+        if (Plugin.Instance.Configuration.Series.TryGetValue(categoryId, out var configuredSeriesIds))
+        {
+            if (configuredSeriesIds.Count == 0)
+            {
+                logger.LogInformation("GetSeries: Category {CategoryId} has EMPTY series list (all series allowed)", categoryId);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "GetSeries: Category {CategoryId} has {Count} configured series: [{SeriesIds}]",
+                    categoryId,
+                    configuredSeriesIds.Count,
+                    string.Join(", ", configuredSeriesIds));
+            }
+        }
+
+        // Fetch from API
+        logger.LogInformation("GetSeries: Calling API GetSeriesByCategoryAsync for category {CategoryId}", categoryId);
         List<Series> series = await xtreamClient.GetSeriesByCategoryAsync(Plugin.Instance.Creds, categoryId, cancellationToken).ConfigureAwait(false);
-        return series.Where((Series series) => IsConfigured(Plugin.Instance.Configuration.Series, series.CategoryId, series.SeriesId));
+        logger.LogInformation("GetSeries: API returned {Count} series for category {CategoryId}", series.Count, categoryId);
+
+        // Filter based on configuration
+        var filtered = series.Where((Series s) => IsConfigured(Plugin.Instance.Configuration.Series, s.CategoryId, s.SeriesId)).ToList();
+        logger.LogInformation(
+            "GetSeries: After filtering, {FilteredCount}/{TotalCount} series remain for category {CategoryId}",
+            filtered.Count,
+            series.Count,
+            categoryId);
+
+        return filtered;
     }
 
     /// <summary>
@@ -292,9 +345,29 @@ public partial class StreamService(IXtreamClient xtreamClient)
     public async Task<IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>>> GetEpisodes(int seriesId, int seasonId, CancellationToken cancellationToken)
     {
         SeriesStreamInfo series = await xtreamClient.GetSeriesStreamsBySeriesAsync(Plugin.Instance.Creds, seriesId, cancellationToken).ConfigureAwait(false);
+        return GetEpisodesFromSeriesInfo(series, seriesId, seasonId);
+    }
+
+    /// <summary>
+    /// Gets episodes from an already-fetched SeriesStreamInfo object without making an API call.
+    /// Use this when you already have the SeriesStreamInfo from a previous GetSeasons() call.
+    /// </summary>
+    /// <param name="series">The pre-fetched SeriesStreamInfo.</param>
+    /// <param name="seriesId">The Xtream id of the Series.</param>
+    /// <param name="seasonId">The Xtream id of the Season.</param>
+    /// <returns>List of episodes with series and season info.</returns>
+    public IEnumerable<Tuple<SeriesStreamInfo, Season?, Episode>> GetEpisodesFromSeriesInfo(SeriesStreamInfo series, int seriesId, int seasonId)
+    {
+        int categoryId = series.Info.CategoryId;
+        if (!IsConfigured(Plugin.Instance.Configuration.Series, categoryId, seriesId))
+        {
+            return new List<Tuple<SeriesStreamInfo, Season?, Episode>>();
+        }
+
         Season? season = series.Seasons.FirstOrDefault(s => s.SeasonId == seasonId);
 
         List<Tuple<SeriesStreamInfo, Season?, Episode>> result = new();
+        HashSet<int> seenEpisodeIds = new();
 
         if (series.Episodes != null)
         {
@@ -303,21 +376,30 @@ public partial class StreamService(IXtreamClient xtreamClient)
             {
                 foreach (var episode in episodes)
                 {
-                    result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                    if (seenEpisodeIds.Add(episode.EpisodeId))
+                    {
+                        result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                    }
                 }
             }
 
-            // Fallback: search all episodes and filter by episode.Season property
-            // This handles cases where episodes are stored under a different dictionary key
+            // Fallback: search all episodes in dictionary and filter by episode.Season property
+            // This handles cases where episodes might be stored under a different season ID key
+            // Only add episodes that weren't already added from the direct lookup
             foreach (var kvp in series.Episodes)
             {
-                if (kvp.Value != null && kvp.Key != seasonId)
+                if (kvp.Value != null && kvp.Key != seasonId) // Skip if we already checked this key
                 {
                     foreach (var episode in kvp.Value)
                     {
-                        if (episode.Season == seasonId && !result.Any(r => r.Item3.EpisodeId == episode.EpisodeId))
+                        // Match episodes by their Season property, not just the dictionary key
+                        if (episode.Season == seasonId)
                         {
-                            result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                            // Avoid duplicates using HashSet for O(1) lookup
+                            if (seenEpisodeIds.Add(episode.EpisodeId))
+                            {
+                                result.Add(new Tuple<SeriesStreamInfo, Season?, Episode>(series, season, episode));
+                            }
                         }
                     }
                 }
