@@ -1,84 +1,96 @@
-# Jellyfin.Xtream
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Kevinjil/Jellyfin.Xtream/total)
-![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/Kevinjil/Jellyfin.Xtream/latest/total)
-![GitHub commits since latest release](https://img.shields.io/github/commits-since/Kevinjil/Jellyfin.Xtream/latest)
-![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2FKevinjil%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=targetAbi&label=Jellyfin%20ABI)
-![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2FKevinjil%2FJellyfin.Xtream%2Frefs%2Fheads%2Fmaster%2Fbuild.yaml&query=framework&label=.NET%20framework)
+# Jellyfin.Xtream (Flat View Fork)
 
-The Jellyfin.Xtream plugin can be used to integrate the content provided by an [Xtream-compatible API](https://xtream-ui.org/api-xtreamui-xtreamcode/) in your [Jellyfin](https://jellyfin.org/) instance.
+A fork of [Jellyfin.Xtream](https://github.com/Kevinjil/Jellyfin.Xtream) with enhanced features for better browsing and metadata.
+
+## What's Different in This Fork?
+
+| Feature | Description |
+|---------|-------------|
+| **Flat View** | Browse all series/movies in a single alphabetical list instead of navigating through category folders |
+| **Eager Caching** | Pre-fetches all series data at startup for instant browsing - no more waiting for API calls |
+| **TVDb Artwork** | Automatically replaces low-quality provider images with high-quality artwork from TVDb |
+| **Title Override Map** | Manually map series titles to TVDb IDs when automatic lookup fails |
+| **Delta Sync** | Only syncs changed items to Jellyfin database, reducing refresh time |
+| **Better Error Handling** | Configuration pages show helpful error messages instead of failing silently |
 
 ## Installation
 
-The plugin can be installed using a custom plugin repository.
-To add the repository, follow these steps:
+Add this fork's repository to Jellyfin:
 
-1. Open your admin dashboard and navigate to `Plugins`.
-1. Select the `Repositories` tab on the top of the page.
-1. Click the `+` symbol to add a repository.
-1. Enter `Jellyfin.Xtream` as the repository name.
-1. Enter [`https://kevinjil.github.io/Jellyfin.Xtream/repository.json`](https://kevinjil.github.io/Jellyfin.Xtream/repository.json) as the repository url.
-1. Click save.
+1. Open admin dashboard → `Plugins` → `Repositories` tab
+2. Click `+` to add a repository
+3. **Name:** `Jellyfin Xtream (Flat View)`
+4. **URL:** `https://rolandb5.github.io/Jellyfin.Xtream/repository.json`
+5. Click Save
 
-To install or update the plugin, follow these steps:
+Install the plugin:
 
-1. Open your admin dashboard and navigate to `Plugins`.
-1. Select the `Catalog` tab on the top of the page.
-1. Under `Live TV`, select `Jellyfin Xtream`.
-1. (Optional) Select the desired plugin version.
-1. Click `Install`.
-1. Restart your Jellyfin server to complete the installation.
+1. Go to `Plugins` → `Catalog` tab
+2. Under `Live TV`, select `Jellyfin Xtream (Flat View)`
+3. Click `Install` and restart Jellyfin
+
+## Features
+
+### Flat View Mode
+Skip category folders and see all your content in one place:
+- **Series:** Enable "Flatten Series View" in Series config tab
+- **VOD/Movies:** Enable "Flatten VOD View" in Video On-Demand config tab
+
+### Eager Caching
+Pre-loads all series, seasons, and episodes at startup:
+- Enable "Enable Series Caching" in Series config tab
+- Set refresh interval (default: 60 minutes)
+- Click "Refresh Cache" for manual refresh
+- Cache persists across restarts
+
+### TVDb Artwork Integration
+Automatically fetches high-quality artwork during cache refresh:
+- Enabled by default when caching is on
+- Uses Jellyfin's TVDb plugin for lookups
+- For series that can't be found, use Title Override Map:
+  ```
+  My Local Series Name=12345
+  Another Series=67890
+  ```
+  (Enter TVDb series IDs, one mapping per line)
 
 ## Configuration
 
-The plugin requires connection information for an [Xtream-compatible API](https://xtream-ui.org/api-xtreamui-xtreamcode/).
-The following credentials should be set correctly in the `Credentials` plugin configuration tab on the admin dashboard.
+### Credentials
+| Property | Description |
+|----------|-------------|
+| Base URL | Xtream API URL (e.g., `https://provider.example.com`) |
+| Username | Your Xtream username |
+| Password | Your Xtream password |
 
-| Property | Description                                                                               |
-| -------- | ----------------------------------------------------------------------------------------- |
-| Base URL | The URL of the API endpoint excluding the trailing slash, including protocol (http/https) |
-| Username | The username used to authenticate to the API                                              |
-| Password | The password used to authenticate to the API                                              |
+### Live TV / VOD / Series
+1. Open the respective configuration tab
+2. Enable "Show this channel to users"
+3. Select categories/items you want available
+4. (Optional) Enable Flat View for single-list browsing
+5. (Optional) Enable Caching for instant loading
+6. Click Save
 
-### Live TV
+## Upstream Contributions
 
-1. Open the `Live TV` configuration tab.
-1. Select the categories, or individual channels within categories, you want to be available.
-1. Click `Save` on the bottom of the page.
-1. Open the `TV Overrides` configuration tab.
-1. Modify the channel numbers, names, and icons if desired.
-1. Click `Save` on the bottom of the page.
+All features in this fork are being contributed back to the original project:
 
-### Video On-Demand
+| Feature | Upstream PR | Status |
+|---------|-------------|--------|
+| Flat View | [#283](https://github.com/Kevinjil/Jellyfin.Xtream/pull/283) | Under review |
+| Unicode Pipe Support | [#281](https://github.com/Kevinjil/Jellyfin.Xtream/pull/281) | Under review |
+| Malformed JSON Handling | [#282](https://github.com/Kevinjil/Jellyfin.Xtream/pull/282) | Under review |
+| Missing Episodes Fix | [#284](https://github.com/Kevinjil/Jellyfin.Xtream/pull/284) | Under review |
+| Config UI Errors | [#285](https://github.com/Kevinjil/Jellyfin.Xtream/pull/285) | Under review |
+| Caching + Metadata | [#286](https://github.com/Kevinjil/Jellyfin.Xtream/pull/286) | Under review |
 
-1. Open the `Video On-Demand` configuration tab.
-1. Enable `Show this channel to users`.
-1. Select the categories, or individual videos within categories, you want to be available.
-1. Click `Save` on the bottom of the page.
+## Known Issues
 
-### Series
+### Credential Exposure
+Jellyfin publishes remote paths in the API which include Xtream credentials. Use caution on shared servers.
 
-1. Open the `Series` configuration tab.
-1. Enable `Show this channel to users`.
-1. Select the categories, or individual series within categories, you want to be available.
-1. Click `Save` on the bottom of the page.
+## Links
 
-### TV Catchup
-1. Open the `Live TV` configuration tab.
-1. Enable `Show the catch-up channel to users`.
-1. Click `Save` on the bottom of the page.
-
-## Known problems
-
-### Loss of confidentiality
-
-Jellyfin publishes the remote paths in the API and in the default user interface.
-As the Xtream format for remote paths includes the username and password, anyone that can access the library will have access to your credentials.
-Use this plugin with caution on shared servers.
-
-## Troubleshooting
-
-Make sure you have correctly configured your [Jellyfin networking](https://jellyfin.org/docs/general/networking/):
-
-1. Open your admin dashboard and navigate to `Networking`.
-2. Correctly configure your `Published server URIs`.
-   For example: `all=https://jellyfin.example.com`
+- **This Fork:** https://github.com/rolandb5/Jellyfin.Xtream
+- **Original Project:** https://github.com/Kevinjil/Jellyfin.Xtream
+- **Jellyfin:** https://jellyfin.org
