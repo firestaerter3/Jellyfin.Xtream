@@ -8,6 +8,14 @@
     "owner": "Kevinjil",
     "versions": [
       {
+        "changelog": "## VOD/Movies Caching with TMDB Artwork\n\nThis release adds caching support for VOD/Movies, mirroring the existing Series caching feature.\n\n### Features\n- **VOD Caching**: Pre-fetch all movie data at startup for instant navigation\n- **TMDB Artwork**: Automatically replaces provider images with high-quality TMDB artwork\n- **Title Override Map**: Manually map movie titles to TMDB IDs when automatic lookup fails\n- **Delta Sync**: Efficient database population\n- **Cache UI**: Full control panel with refresh button, progress display, and settings\n\n### How to Use\n1. Go to Plugin Settings → Video On-Demand tab\n2. Enable \"Enable VOD Caching\"\n3. (Optional) Enable \"Enable TMDB Artwork Lookup\" for better artwork\n4. Click \"Refresh Now\" or wait for automatic refresh\n5. Browse VOD - should be instant!",
+        "checksum": "f9ec9140aba873d013fa63b5c0ded49d",
+        "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.10.0/jellyfin-xtream-flat-view_0.10.0.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-01-30T21:00:00Z",
+        "version": "0.10.0.0"
+      },
+      {
         "changelog": "## Fix Refresh Button Authentication\n\n### Bug Fix\n- **Refresh Now button** now properly authenticates API requests\n- Changed from direct `fetch()` to `ApiClient.fetch()` for proper Jellyfin auth handling\n\n### Root Cause\nThe JavaScript was using direct `fetch()` with manual headers, which wasn't sending authentication correctly. Using Jellyfin's `ApiClient.fetch()` ensures proper authentication handling.",
         "checksum": "98a561c4fcbd0f396c787ad7d9a3998e",
         "sourceUrl": "https://github.com/rolandb5/Jellyfin.Xtream/releases/download/v0.9.14.1/jellyfin-xtream-flat-view_0.9.14.1.zip",
