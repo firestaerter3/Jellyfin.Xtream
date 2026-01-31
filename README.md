@@ -20,7 +20,7 @@ Add this fork's repository to Jellyfin:
 1. Open admin dashboard → `Plugins` → `Repositories` tab
 2. Click `+` to add a repository
 3. **Name:** `Jellyfin Xtream (Flat View)`
-4. **URL:** `https://firestaerter3.github.io/Jellyfin.Xtream/repository.json`
+4. **URL:** `https://firestaerter3.github.io/jellyfin-plugin-repo/manifest.json`
 5. Click Save
 
 Install the plugin:
