@@ -149,7 +149,7 @@ public class VodChannel(ILogger<VodChannel> logger) : IChannel, IDisableMediaSou
         {
             ContentType = ChannelMediaContentType.Movie,
             DateCreated = DateTimeOffset.FromUnixTimeSeconds(added).DateTime,
-            Id = $"{StreamService.StreamPrefix}{stream.StreamId}",
+            Id = StreamService.ToGuid(StreamService.StreamPrefix, stream.StreamId, 0, 0).ToString(),
             ImageUrl = imageUrl,
             IsLiveStream = false,
             MediaSources = sources,
