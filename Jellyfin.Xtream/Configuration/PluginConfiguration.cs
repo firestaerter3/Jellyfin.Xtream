@@ -180,6 +180,36 @@ public class PluginConfiguration : BasePluginConfiguration
     public string TmdbTitleOverrides { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets a value indicating whether incremental sync is enabled.
+    /// When enabled, only changed series and movies are re-processed during cache refresh.
+    /// This significantly reduces API calls and processing time for subsequent syncs.
+    /// Default is true.
+    /// </summary>
+    public bool IncrementalSyncEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to look up TMDb IDs for movies.
+    /// When enabled, movie folders will be named with TMDb IDs for precise metadata matching.
+    /// Example: "Movie Name (2024) [tmdbid-12345]".
+    /// </summary>
+    public bool EnableTmdbLookup { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to look up TVDb IDs for series.
+    /// When enabled, series folders will be named with TVDb IDs for precise metadata matching.
+    /// Example: "Series Name (2024) [tvdbid-67890]".
+    /// </summary>
+    public bool EnableTvdbLookup { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the interval in hours between forced full syncs.
+    /// Even with incremental sync enabled, a full sync is performed periodically
+    /// to catch any content that may have been missed or removed.
+    /// Default is 24 hours. Range: 1-168 (1 week).
+    /// </summary>
+    public int FullSyncIntervalHours { get; set; } = 24;
+
+    /// <summary>
     /// Gets or sets the channels displayed in Live TV.
     /// </summary>
     public SerializableDictionary<int, HashSet<int>> LiveTv { get; set; } = [];

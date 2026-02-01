@@ -224,10 +224,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     /// <summary>
     /// Trigger an immediate cache refresh.
     /// </summary>
+    /// <param name="fullSync">If true, forces a full sync ignoring incremental sync settings.</param>
     /// <returns>Status of the refresh operation.</returns>
     [Authorize(Policy = "RequiresElevation")]
     [HttpPost("SeriesCacheRefresh")]
-    public ActionResult<object> TriggerCacheRefresh()
+    public ActionResult<object> TriggerCacheRefresh([FromQuery] bool fullSync = false)
     {
         var (isRefreshing, _, _, _, _) = Plugin.Instance.SeriesCacheService.GetStatus();
         if (isRefreshing)
@@ -237,9 +238,10 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
 
         // Start refresh in background with no cancellation token
         // (don't use the HTTP request's token as it gets cancelled when request completes)
-        _ = Plugin.Instance.SeriesCacheService.RefreshCacheAsync(null, CancellationToken.None);
+        _ = Plugin.Instance.SeriesCacheService.RefreshCacheAsync(null, fullSync, CancellationToken.None);
 
-        return Ok(new { Success = true, Message = "Cache refresh started" });
+        string message = fullSync ? "Full cache refresh started" : "Cache refresh started";
+        return Ok(new { Success = true, Message = message });
     }
 
     /// <summary>
@@ -302,10 +304,11 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
     /// <summary>
     /// Trigger an immediate VOD cache refresh.
     /// </summary>
+    /// <param name="fullSync">If true, forces a full sync ignoring incremental sync settings.</param>
     /// <returns>Status of the refresh operation.</returns>
     [Authorize(Policy = "RequiresElevation")]
     [HttpPost("VodCacheRefresh")]
-    public ActionResult<object> TriggerVodCacheRefresh()
+    public ActionResult<object> TriggerVodCacheRefresh([FromQuery] bool fullSync = false)
     {
         var (isRefreshing, _, _, _, _) = Plugin.Instance.VodCacheService.GetStatus();
         if (isRefreshing)
@@ -314,9 +317,10 @@ public class XtreamController(IXtreamClient xtreamClient) : ControllerBase
         }
 
         // Start refresh in background with no cancellation token
-        _ = Plugin.Instance.VodCacheService.RefreshCacheAsync(null, CancellationToken.None);
+        _ = Plugin.Instance.VodCacheService.RefreshCacheAsync(null, fullSync, CancellationToken.None);
 
-        return Ok(new { Success = true, Message = "VOD cache refresh started" });
+        string message = fullSync ? "Full VOD cache refresh started" : "VOD cache refresh started";
+        return Ok(new { Success = true, Message = message });
     }
 
     /// <summary>

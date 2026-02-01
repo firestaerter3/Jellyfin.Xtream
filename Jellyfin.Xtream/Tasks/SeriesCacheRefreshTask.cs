@@ -69,7 +69,7 @@ public class SeriesCacheRefreshTask : IScheduledTask
             return;
         }
 
-        await Plugin.Instance.SeriesCacheService.RefreshCacheAsync(progress, cancellationToken).ConfigureAwait(false);
+        await Plugin.Instance.SeriesCacheService.RefreshCacheAsync(progress, forceFullSync: false, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

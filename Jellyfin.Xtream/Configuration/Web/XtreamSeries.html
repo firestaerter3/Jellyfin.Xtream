@@ -73,6 +73,19 @@
           </div>
         </div>
         <div class="sectionTitleContainer flex align-items-center" style="margin-top: 1em;">
+          <h2 class="sectionTitle">Metadata Lookup</h2>
+        </div>
+        <div class="checkboxContainer checkboxContainer-withDescription">
+          <label>
+            <input is="emby-checkbox" id="EnableTvdbLookup" name="EnableTvdbLookup" type="checkbox" checked />
+            <span>Enable TVDb ID Lookup for Series</span>
+          </label>
+          <div class="fieldDescription">
+            Look up TVDb IDs using Jellyfin's metadata providers and embed them in folder names for precise metadata matching.
+            Example: "Series Name (2024) [tvdbid-67890]". Uses Jellyfin's configured TVDb provider (no API key required).
+          </div>
+        </div>
+        <div class="sectionTitleContainer flex align-items-center" style="margin-top: 1em;">
           <h2 class="sectionTitle">Artwork Injector</h2>
         </div>
         <div class="checkboxContainer checkboxContainer-withDescription">

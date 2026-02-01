@@ -17,13 +17,16 @@ using Jellyfin.Xtream.Client;
 using Jellyfin.Xtream.Providers;
 using Jellyfin.Xtream.Service;
 using Jellyfin.Xtream.Tasks;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Channels;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.LiveTv;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Xtream;
 
@@ -36,6 +39,12 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<IXtreamClient, XtreamClient>();
         serviceCollection.AddSingleton<RetryHandler>();
         serviceCollection.AddSingleton<FailureTrackingService>();
+        serviceCollection.AddSingleton<MetadataLookupService>(sp =>
+            new MetadataLookupService(
+                sp.GetRequiredService<IProviderManager>(),
+                sp.GetRequiredService<IApplicationPaths>(),
+                sp.GetRequiredService<IServerConfigurationManager>(),
+                sp.GetRequiredService<ILogger<MetadataLookupService>>()));
         serviceCollection.AddSingleton<ILiveTvService, LiveTvService>();
         serviceCollection.AddSingleton<IChannel, CatchupChannel>();
         serviceCollection.AddSingleton<IChannel, SeriesChannel>();

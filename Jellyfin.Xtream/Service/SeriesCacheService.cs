@@ -51,6 +51,7 @@ public class SeriesCacheService : IDisposable
     private readonly StreamService _streamService;
     private readonly IMemoryCache _memoryCache;
     private readonly FailureTrackingService _failureTrackingService;
+    private readonly SyncStateService _syncStateService;
     private readonly ILogger<SeriesCacheService>? _logger;
     private readonly IProviderManager? _providerManager;
     private readonly IServerConfigurationManager? _serverConfigManager;
@@ -69,6 +70,7 @@ public class SeriesCacheService : IDisposable
     /// <param name="streamService">The stream service instance.</param>
     /// <param name="memoryCache">The memory cache instance.</param>
     /// <param name="failureTrackingService">The failure tracking service instance.</param>
+    /// <param name="syncStateService">The sync state service instance.</param>
     /// <param name="logger">Optional logger instance.</param>
     /// <param name="providerManager">Optional provider manager for TMDB lookups.</param>
     /// <param name="serverConfigManager">Optional server configuration manager for metadata language.</param>
@@ -76,6 +78,7 @@ public class SeriesCacheService : IDisposable
         StreamService streamService,
         IMemoryCache memoryCache,
         FailureTrackingService failureTrackingService,
+        SyncStateService syncStateService,
         ILogger<SeriesCacheService>? logger = null,
         IProviderManager? providerManager = null,
         IServerConfigurationManager? serverConfigManager = null)
@@ -83,6 +86,7 @@ public class SeriesCacheService : IDisposable
         _streamService = streamService;
         _memoryCache = memoryCache;
         _failureTrackingService = failureTrackingService;
+        _syncStateService = syncStateService;
         _logger = logger;
         _providerManager = providerManager;
         _serverConfigManager = serverConfigManager;
@@ -97,11 +101,16 @@ public class SeriesCacheService : IDisposable
 
     /// <summary>
     /// Pre-fetches and caches all series data (categories, series, seasons, episodes).
+    /// Supports incremental sync to skip unchanged series based on their LastModified timestamps.
     /// </summary>
     /// <param name="progress">Optional progress reporter (0.0 to 1.0).</param>
+    /// <param name="forceFullSync">If true, forces a full sync ignoring incremental sync settings.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the async operation.</returns>
-    public async Task RefreshCacheAsync(IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+    public async Task RefreshCacheAsync(
+        IProgress<double>? progress = null,
+        bool forceFullSync = false,
+        CancellationToken cancellationToken = default)
     {
         // Prevent concurrent refreshes
         if (!await _refreshLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
@@ -129,13 +138,47 @@ public class SeriesCacheService : IDisposable
             _refreshCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             oldCts?.Dispose();
 
-            _logger?.LogInformation("Starting series data cache refresh");
+            // Load sync state for incremental sync
+            var config = Plugin.Instance.Configuration;
+            SyncState syncState = await _syncStateService.LoadStateAsync(_refreshCancellationTokenSource.Token).ConfigureAwait(false);
+
+            // Determine if we should do a full sync
+            bool isIncrementalSync = config.IncrementalSyncEnabled
+                && !forceFullSync
+                && !SyncStateService.IsFullSyncNeeded(syncState, config.FullSyncIntervalHours);
+
+            if (forceFullSync)
+            {
+                _logger?.LogInformation("Starting FULL series cache refresh (forced)");
+            }
+            else if (!config.IncrementalSyncEnabled)
+            {
+                _logger?.LogInformation("Starting FULL series cache refresh (incremental sync disabled)");
+            }
+            else if (SyncStateService.IsFullSyncNeeded(syncState, config.FullSyncIntervalHours))
+            {
+                _logger?.LogInformation(
+                    "Starting FULL series cache refresh (last full sync: {LastFullSync}, interval: {Interval}h)",
+                    syncState.LastFullSync,
+                    config.FullSyncIntervalHours);
+                isIncrementalSync = false;
+            }
+            else
+            {
+                _logger?.LogInformation(
+                    "Starting INCREMENTAL series cache refresh (last sync: {LastSync}, {TrackedCount} series tracked)",
+                    syncState.LastIncrementalSync,
+                    syncState.SeriesLastModified.Count);
+            }
 
             string cacheDataVersion = Plugin.Instance.CacheDataVersion;
             string cachePrefix = $"series_cache_{cacheDataVersion}_v{_cacheVersion}_";
 
-            // Clear old cache entries
-            ClearCache(cacheDataVersion);
+            // Clear old cache entries only for full sync
+            if (!isIncrementalSync)
+            {
+                ClearCache(cacheDataVersion);
+            }
 
             try
             {
@@ -174,6 +217,7 @@ public class SeriesCacheService : IDisposable
                 int seriesCount = 0;
                 int seasonCount = 0;
                 int episodeCount = 0;
+                int seriesSkipped = 0;
                 int totalSeries = 0;
 
                 // Single pass: fetch all series lists and cache them for reuse
@@ -227,6 +271,7 @@ public class SeriesCacheService : IDisposable
 
                 // Flatten all series into a single list with category info for parallel processing
                 List<(XtreamSeries Series, Category Category)> allSeries = new();
+                HashSet<int> currentSeriesIds = new();
                 foreach (Category category in categoryList)
                 {
                     List<XtreamSeries> seriesListItems = seriesListsByCategory[category.CategoryId];
@@ -234,7 +279,27 @@ public class SeriesCacheService : IDisposable
                     foreach (XtreamSeries series in seriesListItems)
                     {
                         allSeries.Add((series, category));
+                        currentSeriesIds.Add(series.SeriesId);
                     }
+                }
+
+                // Detect deleted series (in sync state but no longer on provider)
+                int seriesDeleted = 0;
+                List<int> deletedSeriesIds = syncState.SeriesLastModified.Keys
+                    .Where(id => !currentSeriesIds.Contains(id))
+                    .ToList();
+
+                foreach (int deletedId in deletedSeriesIds)
+                {
+                    syncState.SeriesLastModified.TryRemove(deletedId, out _);
+                    seriesDeleted++;
+                }
+
+                if (seriesDeleted > 0)
+                {
+                    _logger?.LogInformation(
+                        "Detected {Count} deleted series (removed from provider)",
+                        seriesDeleted);
                 }
 
                 // Thread-safe counters for progress tracking
@@ -253,6 +318,25 @@ public class SeriesCacheService : IDisposable
 
                     try
                     {
+                        // INCREMENTAL SYNC CHECK: Skip unchanged series
+                        if (isIncrementalSync &&
+                            syncState.SeriesLastModified.TryGetValue(series.SeriesId, out var lastModified) &&
+                            series.LastModified <= lastModified)
+                        {
+                            // Series unchanged - skip API call but preserve existing cache
+                            Interlocked.Increment(ref seriesSkipped);
+                            int skippedProcessed = Interlocked.Increment(ref processedSeries);
+
+                            if (totalSeries > 0)
+                            {
+                                double progressValue = 0.1 + (skippedProcessed * 0.8 / totalSeries);
+                                _currentProgress = progressValue;
+                                progress?.Report(progressValue);
+                            }
+
+                            return; // Skip this series
+                        }
+
                         // Throttle to prevent rate limiting
                         await ThrottleRequestAsync().ConfigureAwait(false);
 
@@ -291,6 +375,9 @@ public class SeriesCacheService : IDisposable
                         {
                             _memoryCache.Set($"{cachePrefix}seriesinfo_{series.SeriesId}", seriesStreamInfo, cacheOptions);
                         }
+
+                        // Update sync state with this series' timestamp
+                        syncState.SeriesLastModified[series.SeriesId] = series.LastModified;
 
                         // Update counters atomically
                         int currentProcessed = Interlocked.Increment(ref processedSeries);
@@ -341,11 +428,23 @@ public class SeriesCacheService : IDisposable
                     }
                 }).ConfigureAwait(false);
 
-                _logger?.LogInformation(
-                    "Parallel processing completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes",
-                    seriesCount,
-                    seasonCount,
-                    episodeCount);
+                if (isIncrementalSync)
+                {
+                    _logger?.LogInformation(
+                        "Incremental processing completed: {SeriesCount} series processed, {Skipped} unchanged (skipped), {SeasonCount} seasons, {EpisodeCount} episodes",
+                        seriesCount,
+                        seriesSkipped,
+                        seasonCount,
+                        episodeCount);
+                }
+                else
+                {
+                    _logger?.LogInformation(
+                        "Full processing completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes",
+                        seriesCount,
+                        seasonCount,
+                        episodeCount);
+                }
 
                 // Fetch TVDb images for series if enabled
                 bool useTvdb = Plugin.Instance?.Configuration.UseTvdbForSeriesMetadata ?? true;
@@ -402,11 +501,41 @@ public class SeriesCacheService : IDisposable
                     // See docs/features/08-tvdb-artwork-injection/TODO.md for future options.
                 }
 
+                // Update and save sync state
+                syncState.LastIncrementalSync = DateTime.UtcNow;
+                if (!isIncrementalSync)
+                {
+                    syncState.LastFullSync = DateTime.UtcNow;
+                }
+
+                await _syncStateService.SaveStateAsync(syncState, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
+
                 progress?.Report(1.0); // 100% complete
                 _currentProgress = 1.0;
-                _currentStatus = $"Completed: {seriesCount} series, {seasonCount} seasons, {episodeCount} episodes";
+                _currentStatus = isIncrementalSync
+                    ? $"Completed: {seriesCount} processed, {seriesSkipped} skipped, {seasonCount} seasons, {episodeCount} episodes"
+                    : $"Completed: {seriesCount} series, {seasonCount} seasons, {episodeCount} episodes";
                 _lastRefreshComplete = DateTime.UtcNow;
-                _logger?.LogInformation("Cache refresh completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories", seriesCount, seasonCount, episodeCount, categoryList.Count);
+
+                if (isIncrementalSync)
+                {
+                    _logger?.LogInformation(
+                        "Incremental cache refresh completed: {SeriesCount} series processed, {Skipped} skipped, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories",
+                        seriesCount,
+                        seriesSkipped,
+                        seasonCount,
+                        episodeCount,
+                        categoryList.Count);
+                }
+                else
+                {
+                    _logger?.LogInformation(
+                        "Full cache refresh completed: {SeriesCount} series, {SeasonCount} seasons, {EpisodeCount} episodes across {CategoryCount} categories",
+                        seriesCount,
+                        seasonCount,
+                        episodeCount,
+                        categoryList.Count);
+                }
 
                 // Log failure summary if failures occurred
                 var (failureCount, failedItems) = _failureTrackingService.GetFailureStats();
@@ -1010,6 +1139,17 @@ public class SeriesCacheService : IDisposable
         _currentStatus = "Cache invalidated";
         _lastRefreshComplete = null;
         _logger?.LogInformation("Cache invalidated (version incremented to {Version})", _cacheVersion);
+    }
+
+    /// <summary>
+    /// Resets the sync state, forcing the next refresh to be a full sync.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the async operation.</returns>
+    public async Task ResetSyncStateAsync(CancellationToken cancellationToken = default)
+    {
+        await _syncStateService.ResetStateAsync(cancellationToken).ConfigureAwait(false);
+        _logger?.LogInformation("Sync state reset - next refresh will be a full sync");
     }
 
     /// <summary>
