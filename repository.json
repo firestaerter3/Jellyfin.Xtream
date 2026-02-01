@@ -16,6 +16,14 @@
         "version": "0.10.1.0"
       },
       {
+        "changelog": "Add manual folder ID overrides for TMDb/TVDb lookups\n\nUsers can now force specific provider IDs for content that does not match automatically.\n\n**Usage:**\n- Movies: `The Matrix (1999)=603`\n- Series: `Breaking Bad (2008)=81189`\n\nThe override textareas appear in VOD/Series settings when lookup is enabled.",
+        "checksum": "a99131905db7d1f54e0eaa7f5a51dd80",
+        "sourceUrl": "https://github.com/firestaerter3/Jellyfin.Xtream/releases/download/v0.10.2.0/jellyfin-xtream_0.10.1.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-02-01T12:31:57Z",
+        "version": "0.10.1.0"
+      },
+      {
         "changelog": "## Bug Fix\n\n- **Fixed VOD channel item IDs causing duplicate movies** - VodChannel was using string concatenation for item IDs while all other channels use proper GUIDs. This caused Jellyfin to fail at deduplicating items, resulting in every movie appearing twice in the UI.\n\n## Installation\n\n1. Download `jellyfin-xtream-flat-view_0.10.1.0.zip`\n2. Extract to your Jellyfin plugins folder\n3. Restart Jellyfin\n4. Clear VOD cache in plugin settings to remove duplicates",
         "checksum": "e91ccb5c67e0ca379af4f2b0f5b60f5d",
         "sourceUrl": "https://github.com/firestaerter3/Jellyfin.Xtream/releases/download/v0.10.1.0/jellyfin-xtream_0.10.1.0.zip",
