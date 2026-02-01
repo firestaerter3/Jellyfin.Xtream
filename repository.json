@@ -3,10 +3,18 @@
     "category": "LiveTV",
     "description": "Stream Live IPTV, Video On-Demand, and Series from an Xtream-compatible server using this plugin.\n",
     "guid": "5d774c35-8567-46d3-a950-9bb8227a0c5d",
-    "name": "Jellyfin Xtream (Flat View)",
-    "overview": "A fork with flat view browsing, eager caching, TVDb/TMDB artwork, and better error handling.",
-    "owner": "firestaerter3",
+    "name": "Jellyfin Xtream",
+    "overview": "Stream content from an Xtream-compatible server.",
+    "owner": "Kevinjil",
     "versions": [
+      {
+        "changelog": "## What's New\n\n### Metadata Lookup Service\n- Add MetadataLookupService for TMDb/TVDb ID lookups using Jellyfin's IProviderManager\n- Support folder naming with provider IDs: `Movie Name (2024) [tmdbid-12345]`\n- Persistent cache with 30-day expiration stored in `metadata-cache.json`\n- No API keys required - uses Jellyfin's configured metadata providers\n\n### Incremental Sync\n- Add SyncState/SyncStateService for tracking content changes\n- Skip unchanged series/movies during cache refresh\n- Configurable full sync interval\n\n### Configuration\n- Add `EnableTmdbLookup` setting for movies\n- Add `EnableTvdbLookup` setting for series\n- New UI checkboxes in VOD and Series settings pages",
+        "checksum": "3e61624a6519fbbc3909dd6567f73d6c",
+        "sourceUrl": "https://github.com/firestaerter3/Jellyfin.Xtream/releases/download/v0.11.0.0/jellyfin-xtream_0.10.1.0.zip",
+        "targetAbi": "10.11.0.0",
+        "timestamp": "2026-02-01T11:53:43Z",
+        "version": "0.10.1.0"
+      },
       {
         "changelog": "## Bug Fix\n\n- **Fixed VOD channel item IDs causing duplicate movies** - VodChannel was using string concatenation for item IDs while all other channels use proper GUIDs. This caused Jellyfin to fail at deduplicating items, resulting in every movie appearing twice in the UI.\n\n## Installation\n\n1. Download `jellyfin-xtream-flat-view_0.10.1.0.zip`\n2. Extract to your Jellyfin plugins folder\n3. Restart Jellyfin\n4. Clear VOD cache in plugin settings to remove duplicates",
         "checksum": "e91ccb5c67e0ca379af4f2b0f5b60f5d",
