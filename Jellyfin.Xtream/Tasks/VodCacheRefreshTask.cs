@@ -69,7 +69,7 @@ public class VodCacheRefreshTask : IScheduledTask
             return;
         }
 
-        await Plugin.Instance.VodCacheService.RefreshCacheAsync(progress, cancellationToken).ConfigureAwait(false);
+        await Plugin.Instance.VodCacheService.RefreshCacheAsync(progress, forceFullSync: false, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

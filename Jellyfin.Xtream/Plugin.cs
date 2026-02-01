@@ -85,10 +85,17 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         StreamService = new(xtreamClient, loggerFactory.CreateLogger<Service.StreamService>());
         TaskService = new(taskManager);
         _logger = logger;
+
+        // Create sync state service for incremental sync support
+        SyncStateService = new Service.SyncStateService(
+            applicationPaths,
+            loggerFactory.CreateLogger<Service.SyncStateService>());
+
         SeriesCacheService = new Service.SeriesCacheService(
             StreamService,
             memoryCache,
             failureTrackingService,
+            SyncStateService,
             loggerFactory.CreateLogger<Service.SeriesCacheService>(),
             providerManager,
             serverConfigManager);
@@ -97,6 +104,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             StreamService,
             memoryCache,
             failureTrackingService,
+            SyncStateService,
             loggerFactory.CreateLogger<Service.VodCacheService>(),
             providerManager,
             serverConfigManager);
@@ -212,6 +220,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the library manager instance for delta-based database population.
     /// </summary>
     public ILibraryManager LibraryManager { get; init; }
+
+    /// <summary>
+    /// Gets the sync state service instance for incremental sync support.
+    /// </summary>
+    public Service.SyncStateService SyncStateService { get; init; }
 
     /// <summary>
     /// Gets the series cache service instance.

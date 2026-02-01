@@ -27,6 +27,9 @@ export default function (view) {
     const vodCacheMinDelay = view.querySelector("#VodCacheRefreshMinDelayMs");
     const vodCacheMinDelayValue = view.querySelector("#VodCacheMinDelayValue");
 
+    // Metadata Lookup settings
+    const enableTmdbLookup = view.querySelector("#EnableTmdbLookup");
+
     // Artwork Injector settings
     const useTmdbForVodMetadata = view.querySelector("#UseTmdbForVodMetadata");
     const tmdbOptionsContainer = view.querySelector("#TmdbOptionsContainer");
@@ -67,6 +70,9 @@ export default function (view) {
       vodCacheRefreshMinutes.value = config.VodCacheExpirationMinutes || 600;
       vodCacheParallelism.value = config.CacheRefreshParallelism || 3;
       vodCacheMinDelay.value = config.CacheRefreshMinDelayMs !== undefined ? config.CacheRefreshMinDelayMs : 100;
+
+      // Metadata Lookup settings
+      enableTmdbLookup.checked = config.EnableTmdbLookup !== false;
 
       // Artwork Injector settings
       useTmdbForVodMetadata.checked = config.UseTmdbForVodMetadata !== false;
@@ -261,6 +267,9 @@ export default function (view) {
           if (minDelay < 0) minDelay = 0;
           if (minDelay > 1000) minDelay = 1000;
           config.CacheRefreshMinDelayMs = minDelay;
+
+          // Metadata Lookup settings
+          config.EnableTmdbLookup = enableTmdbLookup.checked;
 
           // Artwork Injector settings
           config.UseTmdbForVodMetadata = useTmdbForVodMetadata.checked;

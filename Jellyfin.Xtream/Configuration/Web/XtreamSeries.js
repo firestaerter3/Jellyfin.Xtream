@@ -24,6 +24,9 @@ export default function (view) {
     const cacheMinDelay = view.querySelector("#CacheRefreshMinDelayMs");
     const cacheMinDelayValue = view.querySelector("#CacheMinDelayValue");
 
+    // Metadata Lookup settings
+    const enableTvdbLookup = view.querySelector("#EnableTvdbLookup");
+
     // Artwork Injector settings
     const useTvdbForSeriesMetadata = view.querySelector("#UseTvdbForSeriesMetadata");
     const tvdbOptionsContainer = view.querySelector("#TvdbOptionsContainer");
@@ -61,6 +64,9 @@ export default function (view) {
       cacheRefreshMinutes.value = config.SeriesCacheExpirationMinutes || 600;
       cacheParallelism.value = config.CacheRefreshParallelism || 3;
       cacheMinDelay.value = config.CacheRefreshMinDelayMs !== undefined ? config.CacheRefreshMinDelayMs : 100;
+
+      // Metadata Lookup settings
+      enableTvdbLookup.checked = config.EnableTvdbLookup !== false;
 
       // Artwork Injector settings
       useTvdbForSeriesMetadata.checked = config.UseTvdbForSeriesMetadata !== false;
@@ -285,6 +291,9 @@ export default function (view) {
           if (minDelay < 0) minDelay = 0;
           if (minDelay > 1000) minDelay = 1000;
           config.CacheRefreshMinDelayMs = minDelay;
+
+          // Metadata Lookup settings
+          config.EnableTvdbLookup = enableTvdbLookup.checked;
 
           // Artwork Injector settings
           config.UseTvdbForSeriesMetadata = useTvdbForSeriesMetadata.checked;

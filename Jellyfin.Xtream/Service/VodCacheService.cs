@@ -45,6 +45,7 @@ public class VodCacheService : IDisposable
     private readonly StreamService _streamService;
     private readonly IMemoryCache _memoryCache;
     private readonly FailureTrackingService _failureTrackingService;
+    private readonly SyncStateService _syncStateService;
     private readonly ILogger<VodCacheService>? _logger;
     private readonly IProviderManager? _providerManager;
     private readonly IServerConfigurationManager? _serverConfigManager;
@@ -63,6 +64,7 @@ public class VodCacheService : IDisposable
     /// <param name="streamService">The stream service instance.</param>
     /// <param name="memoryCache">The memory cache instance.</param>
     /// <param name="failureTrackingService">The failure tracking service instance.</param>
+    /// <param name="syncStateService">The sync state service instance.</param>
     /// <param name="logger">Optional logger instance.</param>
     /// <param name="providerManager">Optional provider manager for TMDB lookups.</param>
     /// <param name="serverConfigManager">Optional server configuration manager for metadata language.</param>
@@ -70,6 +72,7 @@ public class VodCacheService : IDisposable
         StreamService streamService,
         IMemoryCache memoryCache,
         FailureTrackingService failureTrackingService,
+        SyncStateService syncStateService,
         ILogger<VodCacheService>? logger = null,
         IProviderManager? providerManager = null,
         IServerConfigurationManager? serverConfigManager = null)
@@ -77,6 +80,7 @@ public class VodCacheService : IDisposable
         _streamService = streamService;
         _memoryCache = memoryCache;
         _failureTrackingService = failureTrackingService;
+        _syncStateService = syncStateService;
         _logger = logger;
         _providerManager = providerManager;
         _serverConfigManager = serverConfigManager;
@@ -91,11 +95,16 @@ public class VodCacheService : IDisposable
 
     /// <summary>
     /// Pre-fetches and caches all VOD movie data (categories, movies, TMDB images).
+    /// Supports incremental sync to skip unchanged movies based on their Added timestamps.
     /// </summary>
     /// <param name="progress">Optional progress reporter (0.0 to 1.0).</param>
+    /// <param name="forceFullSync">If true, forces a full sync ignoring incremental sync settings.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the async operation.</returns>
-    public async Task RefreshCacheAsync(IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+    public async Task RefreshCacheAsync(
+        IProgress<double>? progress = null,
+        bool forceFullSync = false,
+        CancellationToken cancellationToken = default)
     {
         // Prevent concurrent refreshes
         if (!await _refreshLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
@@ -122,13 +131,47 @@ public class VodCacheService : IDisposable
             _refreshCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             oldCts?.Dispose();
 
-            _logger?.LogInformation("Starting VOD data cache refresh");
+            // Load sync state for incremental sync
+            var config = Plugin.Instance.Configuration;
+            SyncState syncState = await _syncStateService.LoadStateAsync(_refreshCancellationTokenSource.Token).ConfigureAwait(false);
+
+            // Determine if we should do a full sync
+            bool isIncrementalSync = config.IncrementalSyncEnabled
+                && !forceFullSync
+                && !SyncStateService.IsFullSyncNeeded(syncState, config.FullSyncIntervalHours);
+
+            if (forceFullSync)
+            {
+                _logger?.LogInformation("Starting FULL VOD cache refresh (forced)");
+            }
+            else if (!config.IncrementalSyncEnabled)
+            {
+                _logger?.LogInformation("Starting FULL VOD cache refresh (incremental sync disabled)");
+            }
+            else if (SyncStateService.IsFullSyncNeeded(syncState, config.FullSyncIntervalHours))
+            {
+                _logger?.LogInformation(
+                    "Starting FULL VOD cache refresh (last full sync: {LastFullSync}, interval: {Interval}h)",
+                    syncState.LastFullSync,
+                    config.FullSyncIntervalHours);
+                isIncrementalSync = false;
+            }
+            else
+            {
+                _logger?.LogInformation(
+                    "Starting INCREMENTAL VOD cache refresh (last sync: {LastSync}, {TrackedCount} movies tracked)",
+                    syncState.LastIncrementalSync,
+                    syncState.MoviesAdded.Count);
+            }
 
             string cacheDataVersion = Plugin.Instance.VodCacheDataVersion;
             string cachePrefix = $"vod_cache_{cacheDataVersion}_v{_cacheVersion}_";
 
-            // Clear old cache entries
-            ClearCache(cacheDataVersion);
+            // Clear old cache entries only for full sync
+            if (!isIncrementalSync)
+            {
+                ClearCache(cacheDataVersion);
+            }
 
             try
             {
@@ -152,6 +195,7 @@ public class VodCacheService : IDisposable
                 _logger?.LogInformation("Configuration has {ConfigCategoryCount} configured VOD categories", vodConfig.Count);
 
                 int movieCount = 0;
+                int moviesSkipped = 0;
                 int totalMovies = 0;
 
                 // Fetch all movie lists from categories
@@ -236,12 +280,33 @@ public class VodCacheService : IDisposable
 
                     // Flatten all movies for parallel processing
                     List<(StreamInfo Movie, int CategoryId)> allMovies = new();
+                    HashSet<int> currentMovieIds = new();
                     foreach (var kvp in moviesByCategory)
                     {
                         foreach (var movie in kvp.Value)
                         {
                             allMovies.Add((movie, kvp.Key));
+                            currentMovieIds.Add(movie.StreamId);
                         }
+                    }
+
+                    // Detect deleted movies (in sync state but no longer on provider)
+                    int moviesDeleted = 0;
+                    List<int> deletedMovieIds = syncState.MoviesAdded.Keys
+                        .Where(id => !currentMovieIds.Contains(id))
+                        .ToList();
+
+                    foreach (int deletedId in deletedMovieIds)
+                    {
+                        syncState.MoviesAdded.TryRemove(deletedId, out _);
+                        moviesDeleted++;
+                    }
+
+                    if (moviesDeleted > 0)
+                    {
+                        _logger?.LogInformation(
+                            "Detected {Count} deleted movies (removed from provider)",
+                            moviesDeleted);
                     }
 
                     // Parallel processing options
@@ -257,6 +322,27 @@ public class VodCacheService : IDisposable
 
                         try
                         {
+                            // INCREMENTAL SYNC CHECK: Skip unchanged movies
+                            DateTime? addedTime = ParseUnixTimestamp(movie.Added);
+                            if (isIncrementalSync &&
+                                addedTime.HasValue &&
+                                syncState.MoviesAdded.TryGetValue(movie.StreamId, out var lastAdded) &&
+                                addedTime.Value <= lastAdded)
+                            {
+                                // Movie unchanged - skip TMDB lookup
+                                Interlocked.Increment(ref moviesSkipped);
+                                int skippedProcessed = Interlocked.Increment(ref processedMovies);
+
+                                if (totalMovies > 0)
+                                {
+                                    double progressValue = 0.2 + (skippedProcessed * 0.7 / totalMovies);
+                                    _currentProgress = progressValue;
+                                    progress?.Report(progressValue);
+                                }
+
+                                return; // Skip this movie
+                            }
+
                             // Throttle to prevent rate limiting
                             await ThrottleRequestAsync().ConfigureAwait(false);
 
@@ -266,6 +352,12 @@ public class VodCacheService : IDisposable
                                 titleOverrides,
                                 cacheOptions,
                                 ct).ConfigureAwait(false);
+
+                            // Update sync state with this movie's timestamp
+                            if (addedTime.HasValue)
+                            {
+                                syncState.MoviesAdded[movie.StreamId] = addedTime.Value;
+                            }
 
                             if (tmdbUrl != null)
                             {
@@ -315,17 +407,54 @@ public class VodCacheService : IDisposable
                         }
                     }).ConfigureAwait(false);
 
-                    _logger?.LogInformation(
-                        "TMDB lookup completed: {Found} found, {NotFound} not found",
-                        tmdbFound,
-                        tmdbNotFound);
+                    if (isIncrementalSync)
+                    {
+                        _logger?.LogInformation(
+                            "Incremental TMDB lookup completed: {Found} found, {NotFound} not found, {Skipped} skipped (unchanged)",
+                            tmdbFound,
+                            tmdbNotFound,
+                            moviesSkipped);
+                    }
+                    else
+                    {
+                        _logger?.LogInformation(
+                            "TMDB lookup completed: {Found} found, {NotFound} not found",
+                            tmdbFound,
+                            tmdbNotFound);
+                    }
                 }
+
+                // Update and save sync state
+                syncState.LastIncrementalSync = DateTime.UtcNow;
+                if (!isIncrementalSync)
+                {
+                    syncState.LastFullSync = DateTime.UtcNow;
+                }
+
+                await _syncStateService.SaveStateAsync(syncState, _refreshCancellationTokenSource.Token).ConfigureAwait(false);
 
                 progress?.Report(0.95);
                 _currentProgress = 0.95;
-                _currentStatus = $"Completed: {movieCount} movies";
+                _currentStatus = isIncrementalSync
+                    ? $"Completed: {movieCount} processed, {moviesSkipped} skipped"
+                    : $"Completed: {movieCount} movies";
                 _lastRefreshComplete = DateTime.UtcNow;
-                _logger?.LogInformation("VOD cache refresh completed: {MovieCount} movies across {CategoryCount} categories", movieCount, categoryList.Count);
+
+                if (isIncrementalSync)
+                {
+                    _logger?.LogInformation(
+                        "Incremental VOD cache refresh completed: {MovieCount} movies processed, {Skipped} skipped across {CategoryCount} categories",
+                        movieCount,
+                        moviesSkipped,
+                        categoryList.Count);
+                }
+                else
+                {
+                    _logger?.LogInformation(
+                        "Full VOD cache refresh completed: {MovieCount} movies across {CategoryCount} categories",
+                        movieCount,
+                        categoryList.Count);
+                }
 
                 // Log failure summary if failures occurred
                 var (failureCount, failedItems) = _failureTrackingService.GetFailureStats();
@@ -644,6 +773,26 @@ public class VodCacheService : IDisposable
     }
 
     /// <summary>
+    /// Parses a Unix timestamp string to DateTime.
+    /// </summary>
+    /// <param name="timestamp">Unix timestamp string.</param>
+    /// <returns>DateTime if parsing succeeds, null otherwise.</returns>
+    private static DateTime? ParseUnixTimestamp(string? timestamp)
+    {
+        if (string.IsNullOrEmpty(timestamp))
+        {
+            return null;
+        }
+
+        if (long.TryParse(timestamp, out var unix))
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Parses the title override configuration string into a dictionary.
     /// Format: one mapping per line, "MovieTitle=TmdbID".
     /// </summary>
@@ -732,6 +881,17 @@ public class VodCacheService : IDisposable
         _currentStatus = "Cache invalidated";
         _lastRefreshComplete = null;
         _logger?.LogInformation("VOD cache invalidated (version incremented to {Version})", _cacheVersion);
+    }
+
+    /// <summary>
+    /// Resets the sync state, forcing the next refresh to be a full sync.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the async operation.</returns>
+    public async Task ResetSyncStateAsync(CancellationToken cancellationToken = default)
+    {
+        await _syncStateService.ResetStateAsync(cancellationToken).ConfigureAwait(false);
+        _logger?.LogInformation("VOD sync state reset - next refresh will be a full sync");
     }
 
     /// <summary>
