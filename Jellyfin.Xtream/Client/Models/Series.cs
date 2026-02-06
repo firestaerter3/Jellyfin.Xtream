@@ -16,7 +16,6 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 #pragma warning disable CS1591
 namespace Jellyfin.Xtream.Client.Models;
@@ -50,7 +49,7 @@ public class Series
     // [JsonProperty("releaseDate")]
     // public long ReleaseDate { get; set; }
 
-    [JsonConverter(typeof(UnixDateTimeConverter))]
+    [JsonConverter(typeof(SafeUnixDateTimeConverter))]
     [JsonProperty("last_modified")]
     public DateTime LastModified { get; set; }
 
